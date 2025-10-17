@@ -1,0 +1,12 @@
+src/
+test/
+examples/
+docs/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+tsconfig.json
+vite.config.ts
+.gitignore
+.npmignore
