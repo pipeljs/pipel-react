@@ -2,9 +2,9 @@
 
 ## What is Pipel-React?
 
-Pipel-React is a **Promise-like reactive stream programming library** for React, providing elegant asynchronous data flow processing capabilities.
+Pipel-React is a **Promise-like reactive stream programming library** that provides elegant asynchronous data flow handling capabilities for React applications.
 
-Simply put: it lets you handle **continuously changing data streams** using **Promise-like syntax**, not just one-time asynchronous operations.
+Simply put: it lets you handle **continuously changing data streams** using **Promise-like syntax**, not just one-time async operations.
 
 ## Core Concept
 
@@ -24,9 +24,9 @@ count$.next(3) // Output: 3
 
 ## Why Pipel-React?
 
-### 1. Simplifies Async State Management
+### 1. Simplify Async State Management
 
-**Traditional way:**
+**Traditional Way:**
 
 ```tsx
 const [data, setData] = useState(null)
@@ -46,7 +46,7 @@ const fetchData = async () => {
 }
 ```
 
-**Pipel-React way:**
+**Pipel-React Way:**
 
 ```tsx
 const { data, loading, error } = useFetch('/api/data', {
@@ -60,7 +60,7 @@ Compared to RxJS:
 
 - Familiar Promise syntax
 - Easy-to-remember operators
-- Seamless integration with React ecosystem
+- Seamless React ecosystem integration
 
 ### 3. Powerful Stream Processing
 
@@ -76,17 +76,17 @@ const results = useObservable(
 )
 ```
 
-## Key Features
+## Core Features
 
-- ✅ **Automatic State Management** - Stream automatically converts to React state
-- ✅ **Lifecycle Integration** - Auto unsubscribe on component unmount
-- ✅ **Rich Operators** - 30+ operators for stream manipulation
+- ✅ **Automatic State Management** - Streams automatically convert to React state
+- ✅ **Lifecycle Integration** - Auto-unsubscribe on component unmount
+- ✅ **Rich Operators** - 30+ operators for stream processing
 - ✅ **HTTP Support** - Complete useFetch implementation
 - ✅ **TypeScript** - Full type inference
 - ✅ **Persistence** - Easy localStorage integration
 
 ## Next Steps
 
-- [Quick Start](/guide/quick.en) - Get started in 5 minutes
-- [Core Concepts](/guide/reactive.en) - Understand reactive programming
-- [API Reference](/core/usePipel/index.en) - Explore all APIs
+- [Quick Start](/guide/quick) - Get started in 5 minutes
+- [Core Concepts](/guide/reactive) - Understand reactive programming
+- [API Reference](/core/usePipel/) - Explore all APIs

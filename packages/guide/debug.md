@@ -1,364 +1,301 @@
 # Debugging
 
-pipel provides a series of powerful development tools for developers to easily debug stream data.
+## Debugging Tools
 
-## Console Plugin
+Pipel-React provides various debugging tools to help you understand and debug reactive data flows.
 
-pipel provides console plugins to print data modification processes.
+### debug Operator
 
-### Single Node Console
-
-```typescript
-import { useStream } from 'pipel-react'
-import { consoleNode } from 'pipeljs'
-import { useEffect } from 'react'
-
-function Example() {
-  const data$ = useStream(0)
-
-  useEffect(() => {
-    data$.use(consoleNode())
-  }, [data$])
-
-  const update = () => {
-    data$.next(1) // prints resolve 1
-    data$.next(2) // prints resolve 2
-    data$.next(3) // prints resolve 3
-
-    data$.next(Promise.reject(4)) // prints reject 4
-  }
-
-  return <button onClick={update}>Update Data</button>
-}
-```
-
-### Entire Stream Console
-
-```typescript
-import { useStream } from 'pipel-react'
-import { consoleAll, debounce } from 'pipeljs'
-import { useEffect } from 'react'
-
-function Example() {
-  const data$ = useStream(0)
-
-  useEffect(() => {
-    data$.use(consoleAll())
-
-    data$
-      .pipe(debounce(300))
-      .then((value) => {
-        throw new Error(value + 1)
-      })
-      .then(undefined, (error) => ({ current: error.message }))
-  }, [data$])
-
-  return (
-    <div>
-      <button onClick={() => data$.next(Date.now())}>
-        Update Data (check console)
-      </button>
-    </div>
-  )
-}
-```
-
-::: info Note
-`consoleAll` prints the entire stream, meaning the Stream node and its Observable child nodes.
-:::
-
-## Debug Plugin
-
-:::warning Note
-Browsers may filter debugger statements in node_modules, preventing debugger breakpoints from working. You need to manually enable node_modules debugging in Browser DevTools -> Settings -> Ignore List.
-:::
-
-pipel provides debug plugins to debug stream data.
-
-### Basic Debugging
-
-```typescript
-import { useStream } from 'pipel-react'
-import { debugNode } from 'pipeljs'
-import { useEffect } from 'react'
-
-function Example() {
-  const stream$ = useStream(0)
-
-  useEffect(() => {
-    stream$
-      .then((value) => value + 1)
-      .use(debugNode())
-  }, [stream$])
-
-  const trigger = () => {
-    stream$.next(1)
-    // Triggers debugger breakpoint
-  }
-
-  return <button onClick={trigger}>Trigger Debug</button>
-}
-```
-
-### Conditional Debugging
-
-```typescript
-import { useStream } from 'pipel-react'
-import { debugNode } from 'pipeljs'
-import { useEffect } from 'react'
-
-function Example() {
-  const stream$ = useStream<string | number>(0)
-
-  useEffect(() => {
-    // Only trigger debugger for string types
-    const conditionFn = (value: any) => typeof value === 'string'
-    stream$.use(debugNode(conditionFn))
-  }, [stream$])
-
-  const triggerString = () => {
-    stream$.next('hello') // Triggers debugger
-  }
-
-  const triggerNumber = () => {
-    stream$.next(42) // Does not trigger debugger
-  }
-
-  return (
-    <>
-      <button onClick={triggerString}>Trigger String (will debug)</button>
-      <button onClick={triggerNumber}>Trigger Number (won't debug)</button>
-    </>
-  )
-}
-```
-
-### Entire Stream Debugging
-
-```typescript
-import { useStream } from 'pipel-react'
-import { debugAll } from 'pipeljs'
-import { useEffect } from 'react'
-
-function Example() {
-  const data$ = useStream(0)
-
-  useEffect(() => {
-    data$.use(debugAll())
-
-    data$
-      .then((value) => value + 1)
-      .then((value) => value + 1)
-  }, [data$])
-
-  const updateData = () => {
-    data$.next(data$.value + 1)
-    // Will trigger debugger breakpoints at each node in browser DevTools
-    // Currently has three nodes, so will trigger three breakpoints
-  }
-
-  return <button onClick={updateData}>Update Data (trigger debug)</button>
-}
-```
-
-## Debugging with React DevTools
-
-Combined with React DevTools, you can better debug pipel-react applications:
+The `debug` operator prints stream value changes to the console:
 
 ```tsx
-import { usePipel } from 'pipel-react'
-import { useEffect } from 'react'
+import { usePipel, debug } from 'pipel-react'
 
 function Example() {
-  const [data, data$] = usePipel({ count: 0, name: 'test' })
+  const [count, count$] = usePipel(0)
 
-  useEffect(() => {
-    // Can see component updates in React DevTools Profiler
-    console.log('Component updated with:', data)
-  }, [data])
+  // Add debugging
+  count$
+    .pipe(
+      debug('count') // Label name
+    )
+    .subscribe()
 
-  return (
-    <div>
-      <p>Count: {data.count}</p>
-      <p>Name: {data.name}</p>
-      <button onClick={() => data$.set((v) => v.count++)}>Increment Count</button>
-    </div>
-  )
+  return <button onClick={() => count$.next(count + 1)}>Increment</button>
 }
+
+// Console output:
+// [count] 0
+// [count] 1
+// [count] 2
+```
+
+### tap Operator
+
+The `tap` operator allows you to perform side effects without affecting the data flow:
+
+```tsx
+import { tap } from 'pipeljs'
+
+const [data, data$] = usePipel({ count: 0 })
+
+data$
+  .pipe(
+    tap((value) => {
+      console.log('Before:', value)
+    }),
+    map((v) => v.count * 2),
+    tap((value) => {
+      console.log('After:', value)
+    })
+  )
+  .subscribe()
+```
+
+## React DevTools
+
+### Component Names
+
+Add meaningful names to components for easy identification in DevTools:
+
+```tsx
+function UserProfile() {
+  const [user, user$] = usePipel({ name: 'John', age: 25 })
+
+  return <div>{user.name}</div>
+}
+
+// Shows as "UserProfile" in DevTools
+```
+
+### Using displayName
+
+```tsx
+const MemoizedComponent = memo(function UserCard({ user }) {
+  return <div>{user.name}</div>
+})
+
+MemoizedComponent.displayName = 'UserCard'
 ```
 
 ## Performance Debugging
 
-Use React Profiler and pipel's debugging tools to analyze performance:
+### Detecting Unnecessary Renders
 
 ```tsx
-import { usePipel, useObservable } from 'pipel-react'
-import { Profiler } from 'react'
-import { consoleNode } from 'pipeljs'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
-function Example() {
-  const [data, data$] = usePipel({ count: 0 })
+function useRenderCount(componentName) {
+  const renderCount = useRef(0)
 
   useEffect(() => {
-    // Print each data change
-    data$.use(consoleNode('data'))
-  }, [data$])
+    renderCount.current += 1
+    console.log(`${componentName} rendered ${renderCount.current} times`)
+  })
 
-  const onRender = (id: string, phase: 'mount' | 'update', actualDuration: number) => {
-    console.log(`${id} ${phase} took ${actualDuration}ms`)
-  }
+  return renderCount.current
+}
+
+function Example() {
+  const renderCount = useRenderCount('Example')
+  const [count, count$] = usePipel(0)
 
   return (
-    <Profiler id="Example" onRender={onRender}>
-      <div>
-        <p>Count: {data.count}</p>
-        <button onClick={() => data$.set((v) => v.count++)}>Increment Count</button>
-      </div>
-    </Profiler>
+    <div>
+      <p>Render count: {renderCount}</p>
+      <p>Count: {count}</p>
+      <button onClick={() => count$.next(count + 1)}>Increment</button>
+    </div>
   )
 }
 ```
 
-## Debugging Best Practices
+## Common Issues
 
-### 1. Use Named Streams
+### 1. Component Not Updating
 
-Add names to streams for easy identification in console:
+**Problem:** Data changed but component didn't re-render
 
-```typescript
-import { useStream } from 'pipel-react'
-import { consoleNode } from 'pipeljs'
-import { useEffect } from 'react'
+**Checklist:**
+
+```tsx
+// ❌ Wrong: Direct modification
+const [user, user$] = usePipel({ name: 'John' })
+user.name = 'Jane' // Won't trigger update
+
+// ✅ Correct: Use set() or next()
+user$.set((u) => {
+  u.name = 'Jane'
+})
+user$.next({ ...user, name: 'Jane' })
+```
+
+### 2. Memory Leaks
+
+**Problem:** Subscriptions not cleaned up after component unmount
+
+**Checklist:**
+
+```tsx
+// ❌ Wrong: Forgot to cleanup
+useEffect(() => {
+  stream$.subscribe((value) => {
+    console.log(value)
+  })
+  // Missing cleanup
+}, [])
+
+// ✅ Correct: Cleanup subscription
+useEffect(() => {
+  const subscription = stream$.subscribe((value) => {
+    console.log(value)
+  })
+
+  return () => subscription.unsubscribe()
+}, [stream$])
+```
+
+### 3. Closure Trap
+
+**Problem:** Using stale values in callbacks
+
+```tsx
+// ❌ Problem: Using stale value from closure
+const [count, count$] = usePipel(0)
+
+setTimeout(() => {
+  count$.next(count + 1) // count might be outdated
+}, 1000)
+
+// ✅ Solution: Use functional update
+setTimeout(() => {
+  count$.set((c) => c + 1) // Always uses latest value
+}, 1000)
+```
+
+### 4. Async Race Conditions
+
+**Problem:** Uncertain order of async request responses
+
+```tsx
+// ❌ Problem: May show old search results
+const [query, query$] = usePipel('')
+const [results, results$] = usePipel([])
+
+query$.pipe(debounce(300)).subscribe(async (q) => {
+  const data = await fetch(`/api/search?q=${q}`)
+  results$.next(data) // Might be from old request
+})
+
+// ✅ Solution: Use switchMap
+import { switchMap } from 'pipeljs'
+
+const results = useObservable(
+  query$.pipe(
+    debounce(300),
+    switchMap((q) => fetch(`/api/search?q=${q}`).then((r) => r.json()))
+  )
+)
+```
+
+## Debugging Techniques
+
+### 1. Use console.trace()
+
+```tsx
+data$
+  .pipe(
+    tap(() => {
+      console.trace('Data updated from:')
+    })
+  )
+  .subscribe()
+```
+
+### 2. Conditional Breakpoints
+
+```tsx
+data$
+  .pipe(
+    tap((value) => {
+      if (value.count > 10) {
+        debugger // Only pause when count > 10
+      }
+    })
+  )
+  .subscribe()
+```
+
+### 3. Custom Debug Hook
+
+```tsx
+function useDebugValue(value, label = 'Value') {
+  useEffect(() => {
+    console.log(`[${label}] changed:`, value)
+  }, [value, label])
+
+  return value
+}
 
 function Example() {
-  const userStream$ = useStream({ name: 'John', age: 25 })
-  const orderStream$ = useStream({ id: 1, total: 100 })
+  const [count, count$] = usePipel(0)
+  useDebugValue(count, 'Count')
 
-  useEffect(() => {
-    userStream$.use(consoleNode('userStream'))
-    orderStream$.use(consoleNode('orderStream'))
-  }, [userStream$, orderStream$])
-
-  // Console will clearly show which stream's data changed
+  return <div>{count}</div>
 }
 ```
 
-### 2. Stage-by-Stage Debugging
+## Production Debugging
 
-In complex stream processing chains, add debugging at different stages:
+### 1. Conditional Debugging
 
-```typescript
-import { useStream } from 'pipel-react'
-import { consoleNode, map, filter } from 'pipeljs'
-import { useEffect } from 'react'
+```tsx
+const DEBUG = process.env.NODE_ENV === 'development'
 
-function Example() {
-  const data$ = useStream(0)
-
-  useEffect(() => {
-    data$
-      .use(consoleNode('raw data'))
-      .pipe(map((x) => x * 2))
-      .use(consoleNode('after multiply by 2'))
-      .pipe(filter((x) => x > 10))
-      .use(consoleNode('after filter'))
-  }, [data$])
+if (DEBUG) {
+  stream$.pipe(debug('stream')).subscribe()
 }
 ```
 
-### 3. Conditional Debugging
+### 2. Error Boundaries
 
-Enable debugging in development, disable in production:
+```tsx
+import { Component } from 'react'
 
-```typescript
-import { useStream } from 'pipel-react'
-import { consoleNode, debugNode } from 'pipeljs'
-import { useEffect } from 'react'
+class ErrorBoundary extends Component {
+  state = { hasError: false, error: null }
 
-function Example() {
-  const data$ = useStream(0)
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      data$.use(consoleNode('data'))
-      data$.use(debugNode())
-    }
-  }, [data$])
-}
-```
-
-## Common Debugging Scenarios
-
-### Debugging Async Data Streams
-
-```typescript
-import { useStream } from 'pipel-react'
-import { consoleNode } from 'pipeljs'
-import { useEffect } from 'react'
-
-function Example() {
-  const data$ = useStream<Promise<any>>(Promise.resolve(null))
-
-  useEffect(() => {
-    data$.use(consoleNode('async data'))
-
-    data$.then(
-      (value) => console.log('Success:', value),
-      (error) => console.error('Error:', error)
-    )
-  }, [data$])
-
-  const fetchData = async () => {
-    data$.next(
-      fetch('/api/data').then(res => res.json())
-    )
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
   }
 
-  return <button onClick={fetchData}>Fetch Data</button>
-}
-```
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught:', error, errorInfo)
+    // Send to error tracking service
+  }
 
-### Debugging Subscription Issues
-
-```typescript
-import { useStream } from 'pipel-react'
-import { useEffect } from 'react'
-
-function Example() {
-  const data$ = useStream(0)
-
-  useEffect(() => {
-    console.log('Setting up subscription')
-
-    const subscription = data$.subscribe((value) => {
-      console.log('Received value:', value)
-    })
-
-    return () => {
-      console.log('Cleaning up subscription')
-      subscription.unsubscribe()
+  render() {
+    if (this.state.hasError) {
+      return <div>Something went wrong</div>
     }
-  }, [data$])
 
-  return <button onClick={() => data$.next(Date.now())}>Update</button>
+    return this.props.children
+  }
 }
 ```
 
-## Summary
+## Best Practices
 
-pipel's debugging tools:
+1. **Enable debugging in development** - Use `debug` operator to track data flow
+2. **Use React DevTools** - Inspect component tree and props
+3. **Add meaningful labels** - Give descriptive names to Streams and components
+4. **Log key operations** - Use `tap` to record important data changes
+5. **Performance profiling** - Use Profiler to find bottlenecks
+6. **Error handling** - Use ErrorBoundary to catch errors
+7. **Conditional debugging** - Only enable detailed logs in development
 
-- ✅ **consoleNode**: Print data changes for a single node
-- ✅ **consoleAll**: Print data changes for the entire stream
-- ✅ **debugNode**: Trigger debugger breakpoint at a single node
-- ✅ **debugAll**: Trigger debugger breakpoints for the entire stream
-- ✅ **Conditional Debugging**: Support conditional debugging triggers
-- ✅ **React DevTools**: Perfect integration with React development tools
+## Next Steps
 
-These tools help you:
-
-- Track data flow
-- Locate issues
-- Analyze performance bottlenecks
-- Understand complex stream processing logic
+- [Reactive Programming](/guide/reactive) - Understand data flow
+- [Stream Rendering](/guide/render) - Optimize rendering performance
+- [API Reference](/core/debug/) - View debugging APIs

@@ -1,6 +1,6 @@
 # Try it Online
 
-You can try Pipel-React online without any installation:
+You can try Pipel-React online without installation:
 
 ## Online Playgrounds
 

@@ -1,205 +1,375 @@
-# Immutable Data
+# Immutable Updates
 
-pipel uses [limu](https://tnfe.github.io/limu/) for immutable data at its core, and data can only be modified immutably through methods like `set` and `next`.
+## What are Immutable Updates?
 
-## Modifying Object Data
+Immutable updates mean **creating new data copies instead of directly modifying original data**. This is a core principle of React and reactive programming.
 
-```typescript
-import { useStream } from 'pipel-react'
+### Why Immutable Updates?
 
-function Example() {
-  const stream$ = useStream({ obj: { name: 'pipeljs', age: 0 } })
+1. **Predictability** - Data changes are trackable
+2. **Performance** - React can quickly compare references
+3. **Time Travel** - Supports undo/redo functionality
+4. **Concurrency Safety** - Avoids race conditions
 
-  // No need for spread operators {...value, obj: {...value.obj, age: value.obj.age + 1}}
-  const updateAge = () => {
-    stream$.set((value) => (value.obj.age += 1))
-  }
+## Traditional vs Pipel-React
 
-  return <button onClick={updateAge}>Increase Age</button>
-}
-```
-
-## Modifying Array Data
-
-```typescript
-import { useStream } from 'pipel-react'
-
-function Example() {
-  const stream$ = useStream([1, 2, 3])
-
-  // Modify array data
-  const updateFirst = () => {
-    stream$.set((value) => {
-      value[0] = 2
-    })
-  }
-
-  // Complete replacement
-  const replace = () => {
-    stream$.next([1, 2, 3, 4])
-  }
-
-  return (
-    <>
-      <button onClick={updateFirst}>Modify First Item</button>
-      <button onClick={replace}>Replace All</button>
-    </>
-  )
-}
-```
-
-## Modifying Primitive Data Types
-
-```typescript
-import { usePipel } from 'pipel-react'
-
-function Example() {
-  const [count, count$] = usePipel(1)
-
-  // Modify primitive data type
-  const increment = () => {
-    count$.next(count + 1)
-  }
-
-  return <button onClick={increment}>Increment: {count}</button>
-}
-```
-
-## Use Cases
-
-In React, capturing snapshots of each modification with `useState` is difficult, but pipel makes it easy:
+### Traditional React (Manual Immutable Updates)
 
 ```tsx
-import { usePipel } from 'pipel-react'
-import { useEffect } from 'react'
+const [user, setUser] = useState({ name: 'John', age: 25 })
 
-function Example() {
-  const [data, data$] = usePipel({ nest: { name: 'pipeljs', age: 0 } })
+// ❌ Wrong: Direct modification
+user.age = 26
+setUser(user) // Won't trigger update!
 
-  useEffect(() => {
-    // Subscribe to data changes, get snapshot of each modification
-    const subscription = data$.subscribe((value) => {
-      console.log('pipel value:', value)
-      console.log('Is new object:', value !== data)
-    })
+// ✅ Correct: Create new object
+setUser({ ...user, age: 26 })
 
-    return () => subscription.unsubscribe()
-  }, [data$])
+// Nested objects are more complex
+const [data, setData] = useState({
+  user: { profile: { name: 'John' } },
+})
 
-  return (
-    <button onClick={() => data$.set((v) => v.nest.age++)}>Increase Age: {data.nest.age}</button>
-  )
-}
+setData({
+  ...data,
+  user: {
+    ...data.user,
+    profile: {
+      ...data.user.profile,
+      name: 'Jane',
+    },
+  },
+})
 ```
 
-## Comparison with useState
-
-### Using useState
+### Pipel-React (Automatic Immutable Updates)
 
 ```tsx
-import { useState, useEffect } from 'react'
+const [user, user$] = usePipel({ name: 'John', age: 25 })
 
-function Example() {
-  const [data, setData] = useState({ nest: { name: 'pipeljs', age: 0 } })
+// ✅ Simple: Direct modification, auto-creates copy
+user$.next({ ...user, age: 26 })
 
-  useEffect(() => {
-    console.log('useState value:', data)
-    // Problem: Cannot get before/after comparison
-  }, [data])
+// Or use set() method (more concise)
+user$.set((u) => {
+  u.age = 26 // Looks like direct modification, but immutable
+})
 
-  const updateAge = () => {
-    // Must manually create new object
-    setData((prev) => ({
-      ...prev,
-      nest: {
-        ...prev.nest,
-        age: prev.nest.age + 1,
+// Nested objects are also simple
+const [data, data$] = usePipel({
+  user: { profile: { name: 'John' } },
+})
+
+data$.set((d) => {
+  d.user.profile.name = 'Jane' // Auto-handles nested immutability
+})
+```
+
+## next() vs set()
+
+Pipel-React provides two update methods:
+
+### next() - Manual Immutable
+
+```tsx
+const [user, user$] = usePipel({ name: 'John', age: 25 })
+
+// Need to manually create new object
+user$.next({ ...user, age: 26 })
+
+// Arrays also need manual copies
+const [items, items$] = usePipel([1, 2, 3])
+items$.next([...items, 4])
+```
+
+### set() - Auto Immutable
+
+```tsx
+const [user, user$] = usePipel({ name: 'John', age: 25 })
+
+// Auto-creates copy
+user$.set((u) => {
+  u.age = 26
+})
+
+// Array operations are also simple
+const [items, items$] = usePipel([1, 2, 3])
+items$.set((arr) => {
+  arr.push(4) // Auto-creates copy
+})
+```
+
+## Common Scenarios
+
+### Updating Object Properties
+
+```tsx
+const [user, user$] = usePipel({
+  name: 'John',
+  age: 25,
+  email: 'john@example.com',
+})
+
+// Method 1: next()
+user$.next({ ...user, age: 26 })
+
+// Method 2: set()
+user$.set((u) => {
+  u.age = 26
+})
+
+// Update multiple properties
+user$.set((u) => {
+  u.age = 26
+  u.email = 'john.doe@example.com'
+})
+```
+
+### Updating Nested Objects
+
+```tsx
+const [data, data$] = usePipel({
+  user: {
+    profile: {
+      name: 'John',
+      address: {
+        city: 'New York',
+        zip: '10001',
       },
-    }))
-  }
+    },
+  },
+})
 
-  return <button onClick={updateAge}>Increase Age: {data.nest.age}</button>
-}
+// Method 1: next() (verbose)
+data$.next({
+  ...data,
+  user: {
+    ...data.user,
+    profile: {
+      ...data.user.profile,
+      address: {
+        ...data.user.profile.address,
+        city: 'Los Angeles',
+      },
+    },
+  },
+})
+
+// Method 2: set() (concise)
+data$.set((d) => {
+  d.user.profile.address.city = 'Los Angeles'
+})
 ```
 
-### Using pipel
+### Array Operations
 
 ```tsx
-import { usePipel } from 'pipel-react'
-import { useEffect } from 'react'
+const [todos, todos$] = usePipel([
+  { id: 1, text: 'Learn React', done: false },
+  { id: 2, text: 'Learn Pipel', done: false },
+])
 
-function Example() {
-  const [data, data$] = usePipel({ nest: { name: 'pipeljs', age: 0 } })
+// Add item
+todos$.set((arr) => {
+  arr.push({ id: 3, text: 'Build App', done: false })
+})
 
-  useEffect(() => {
-    const subscription = data$.subscribe((value) => {
-      console.log('pipel value:', value)
-      // Advantage: Automatically creates immutable copy, easy to compare
+// Remove item
+todos$.set((arr) => {
+  const index = arr.findIndex((t) => t.id === 2)
+  arr.splice(index, 1)
+})
+
+// Update item
+todos$.set((arr) => {
+  const todo = arr.find((t) => t.id === 1)
+  if (todo) todo.done = true
+})
+
+// Filter
+todos$.set((arr) => {
+  return arr.filter((t) => !t.done)
+})
+
+// Map
+todos$.set((arr) => {
+  return arr.map((t) => ({ ...t, done: true }))
+})
+```
+
+## Performance Optimization
+
+### Batch Updates
+
+```tsx
+const [data, data$] = usePipel({
+  count: 0,
+  name: '',
+  items: [],
+})
+
+// ❌ Avoid: Multiple updates
+data$.set((d) => {
+  d.count = 1
+})
+data$.set((d) => {
+  d.name = 'test'
+})
+data$.set((d) => {
+  d.items = [1, 2, 3]
+})
+
+// ✅ Good: Single update
+data$.set((d) => {
+  d.count = 1
+  d.name = 'test'
+  d.items = [1, 2, 3]
+})
+```
+
+### Conditional Updates
+
+```tsx
+const [user, user$] = usePipel({ name: 'John', age: 25 })
+
+// Only update when condition is met
+const updateAge = (newAge) => {
+  if (newAge >= 0 && newAge <= 120) {
+    user$.set((u) => {
+      u.age = newAge
     })
-    return () => subscription.unsubscribe()
-  }, [data$])
-
-  const updateAge = () => {
-    // Concise syntax, automatically handles immutable updates
-    data$.set((v) => v.nest.age++)
   }
-
-  return <button onClick={updateAge}>Increase Age: {data.nest.age}</button>
 }
 ```
-
-## Advantages of Immutable Data
-
-1. **Simplified Syntax**: No need to manually use spread operators to create new objects
-2. **Performance Optimization**: Only creates necessary copies, not the entire object tree
-3. **Easy Debugging**: Easily track data change history
-4. **Type Safety**: Full TypeScript support
-
-## Debugging Immutable Updates
-
-Using pipel's debugging tools, you can clearly see each immutable update:
-
-```tsx
-import { usePipel } from 'pipel-react'
-import { consoleNode } from 'pipeljs'
-import { useEffect } from 'react'
-
-function Example() {
-  const [data, data$] = usePipel({ nest: { name: 'pipeljs', age: 0 } })
-
-  useEffect(() => {
-    // Add console plugin
-    data$.use(consoleNode('data'))
-  }, [data$])
-
-  return (
-    <div>
-      <p>Age: {data.nest.age}</p>
-      <button onClick={() => data$.set((v) => v.nest.age++)}>Increase Age (check console)</button>
-    </div>
-  )
-}
-```
-
-After clicking the button, the console will clearly show:
-
-- Value before modification
-- Value after modification
-- Changed path
 
 ## Best Practices
 
-1. **Use set method**: For object and array modifications, prefer the `set` method
-2. **Use next method**: For complete replacement, use the `next` method
-3. **Avoid direct modification**: Don't directly modify state values returned from `usePipel`
-4. **Leverage debugging tools**: Use tools like `consoleNode` to track data changes
+### 1. Prefer set()
 
-## Summary
+```tsx
+// ✅ Good: Use set()
+user$.set((u) => {
+  u.age = 26
+})
 
-pipel's immutable data features:
+// ❌ Avoid: Manual spread (unless necessary)
+user$.next({ ...user, age: 26 })
+```
 
-- ✅ **Simplified Syntax**: No need to manually create object copies
-- ✅ **Automatic Optimization**: Intelligently copies only changed parts
-- ✅ **Easy Debugging**: Clear change tracking
-- ✅ **Type Safety**: Full TypeScript support
-- ✅ **Superior Performance**: High-performance implementation based on limu
+### 2. Avoid Returning undefined in set()
+
+```tsx
+// ✅ Good: Modify draft
+data$.set((d) => {
+  d.count += 1
+})
+
+// ❌ Avoid: Return undefined
+data$.set((d) => {
+  d.count += 1
+  return undefined // Will lose data
+})
+
+// ✅ Good: Return new value
+data$.set((d) => {
+  return { ...d, count: d.count + 1 }
+})
+```
+
+### 3. Keep Update Logic Simple
+
+```tsx
+// ✅ Good: Simple and direct
+todos$.set((arr) => {
+  arr.push(newTodo)
+})
+
+// ❌ Avoid: Too complex
+todos$.set((arr) => {
+  const newArr = [...arr]
+  const index = newArr.findIndex(/* ... */)
+  if (index !== -1) {
+    newArr[index] = {
+      ...newArr[index],
+      // Complex nested updates...
+    }
+  }
+  return newArr
+})
+```
+
+### 4. Use Type Safety
+
+```tsx
+interface User {
+  name: string
+  age: number
+  email: string
+}
+
+const [user, user$] = usePipel<User>({
+  name: 'John',
+  age: 25,
+  email: 'john@example.com',
+})
+
+// TypeScript will check types
+user$.set((u) => {
+  u.age = 26 // ✅
+  u.age = '26' // ❌ Type error
+  u.invalid = true // ❌ Property doesn't exist
+})
+```
+
+## Common Pitfalls
+
+### 1. Forgetting to Use set() or next()
+
+```tsx
+const [user, user$] = usePipel({ name: 'John', age: 25 })
+
+// ❌ Wrong: Direct modification won't trigger update
+user.age = 26
+
+// ✅ Correct: Use set() or next()
+user$.set((u) => {
+  u.age = 26
+})
+```
+
+### 2. Modifying Data Outside set()
+
+```tsx
+const [items, items$] = usePipel([1, 2, 3])
+
+// ❌ Wrong: External modification
+items.push(4)
+items$.next(items) // Won't trigger update
+
+// ✅ Correct: Modify inside set()
+items$.set((arr) => {
+  arr.push(4)
+})
+```
+
+### 3. Closure Issues in Async Updates
+
+```tsx
+const [count, count$] = usePipel(0)
+
+// ❌ Problem: Using stale value from closure
+setTimeout(() => {
+  count$.next(count + 1) // count might be outdated
+}, 1000)
+
+// ✅ Solution: Use functional update
+setTimeout(() => {
+  count$.set((c) => c + 1) // Always uses latest value
+}, 1000)
+```
+
+## Next Steps
+
+- [Reactive Programming](/guide/reactive) - Understand reactive concepts
+- [Stream Rendering](/guide/render) - Learn rendering optimization
+- [Debugging](/guide/debug) - Debugging techniques

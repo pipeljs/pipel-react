@@ -1,200 +1,408 @@
 # 响应式编程
 
-pipel-react 提供了强大的响应式流编程能力，让数据流能够与 React 的状态管理无缝集成：
+## 什么是响应式编程？
 
-1. 流的数据自动转换为 React 状态，触发组件重新渲染
-2. pipel-react 提供了 [to$](/cn/core/usePipel/index.cn#to$) 方法，可以将 React 状态转换为流
-3. 流提供了丰富的操作符，可以对数据进行转换、过滤、组合等操作
+响应式编程是一种**以数据流为中心**的编程范式。在响应式编程中，数据的变化会自动传播到所有依赖它的地方。
 
-::: tip 注意
+### 传统编程 vs 响应式编程
 
-- pipel-react 需要 React 18.0+ 版本，推荐使用 React 18.2.0+ 以获得最佳体验
-- 流的数据是单向数据流，通过 `stream$.next()` 或 `stream$.set()` 来更新数据
-- 组件卸载时会自动取消订阅，无需手动清理
-
-:::
-
-## 响应式数据渲染
-
-流可以直接在 React 组件中使用，通过 `usePipel` hook 将流转换为 React 状态：
+**传统编程（命令式）：**
 
 ```tsx
-import { usePipel } from 'pipel-react'
+let a = 1
+let b = 2
+let c = a + b // c = 3
 
-function Example() {
-  const [name, name$] = usePipel('pipeljs')
+a = 10
+// c 仍然是 3，不会自动更新
+```
 
-  const updateName = () => {
-    name$.next('pipel-react')
+**响应式编程（声明式）：**
+
+```tsx
+import { usePipel, useObservable } from 'pipel-react'
+import { combine, map } from 'pipeljs'
+
+const [a, a$] = usePipel(1)
+const [b, b$] = usePipel(2)
+
+const c = useObservable(
+  a$.pipe(
+    combine(b$),
+    map(([a, b]) => a + b)
+  )
+)
+
+a$.next(10)
+// c 自动更新为 12
+```
+
+## Stream（流）
+
+Stream 是 Pipel-React 的核心概念，它代表**随时间变化的值序列**。
+
+### Stream 的特点
+
+1. **持续性** - 可以发出多个值
+2. **可订阅** - 可以监听值的变化
+3. **可组合** - 可以通过操作符组合和转换
+
+### 创建 Stream
+
+```tsx
+import { usePipel, useStream } from 'pipel-react'
+
+// 方式 1：通过 usePipel 创建
+const [count, count$] = usePipel(0)
+
+// 方式 2：通过 useStream 创建
+const count$ = useStream(0)
+
+// 方式 3：从 Promise 创建
+const data$ = useStream(fetch('/api/data'))
+```
+
+### 订阅 Stream
+
+```tsx
+const [count, count$] = usePipel(0)
+
+// 订阅变化
+count$.then((value) => {
+  console.log('Count changed:', value)
+})
+
+// 更新值
+count$.next(1) // 输出: Count changed: 1
+count$.next(2) // 输出: Count changed: 2
+```
+
+## 操作符（Operators）
+
+操作符用于转换和组合 Stream。
+
+### 转换操作符
+
+#### map - 映射值
+
+```tsx
+const [count, count$] = usePipel(1)
+
+const doubled = useObservable(count$.pipe(map((x) => x * 2)))
+
+count$.next(5) // doubled = 10
+```
+
+#### filter - 过滤值
+
+```tsx
+const [value, value$] = usePipel(0)
+
+const positiveOnly = useObservable(value$.pipe(filter((x) => x > 0)))
+
+value$.next(-1) // positiveOnly 不变
+value$.next(5) // positiveOnly = 5
+```
+
+### 时间操作符
+
+#### debounce - 防抖
+
+```tsx
+const [keyword, keyword$] = usePipel('')
+
+const debouncedKeyword = useObservable(
+  keyword$.pipe(
+    debounce(300) // 300ms 防抖
+  )
+)
+
+// 用户快速输入 "hello"
+keyword$.next('h')
+keyword$.next('he')
+keyword$.next('hel')
+keyword$.next('hell')
+keyword$.next('hello')
+// 只有最后一个值在 300ms 后发出
+```
+
+#### throttle - 节流
+
+```tsx
+const [clicks, clicks$] = usePipel(0)
+
+const throttledClicks = useObservable(
+  clicks$.pipe(
+    throttle(1000) // 每秒最多一次
+  )
+)
+```
+
+### 组合操作符
+
+#### combine - 组合最新值
+
+```tsx
+import { combine, map } from 'pipeljs'
+
+const [firstName, firstName$] = usePipel('John')
+const [lastName, lastName$] = usePipel('Doe')
+
+const fullName = useObservable(
+  firstName$.pipe(
+    combine(lastName$),
+    map(([first, last]) => `${first} ${last}`)
+  )
+)
+
+firstName$.next('Jane') // fullName = "Jane Doe"
+lastName$.next('Smith') // fullName = "Jane Smith"
+```
+
+#### merge - 合并多个流
+
+```tsx
+const [stream1$] = usePipel(1)
+const [stream2$] = usePipel(2)
+
+const merged = useObservable(stream1$.pipe(merge(stream2$)))
+
+stream1$.next(10) // merged = 10
+stream2$.next(20) // merged = 20
+```
+
+## 数据流模式
+
+### 单向数据流
+
+```tsx
+function TodoApp() {
+  const [todos, todos$] = usePipel([])
+
+  const addTodo = (text) => {
+    todos$.next([...todos, { id: Date.now(), text }])
+  }
+
+  const removeTodo = (id) => {
+    todos$.next(todos.filter((t) => t.id !== id))
   }
 
   return (
     <div>
-      <p>{name}</p>
-      <button onClick={updateName}>修改</button>
+      <TodoList todos={todos} onRemove={removeTodo} />
+      <AddTodo onAdd={addTodo} />
     </div>
   )
 }
 ```
 
-## 响应式数据更新
+### 派生状态
 
-pipel 提供 [next](https://pipeljs.github.io/pipel-doc/cn/api/stream.html#next) 和 [set](https://pipeljs.github.io/pipel-doc/cn/api/stream.html#set) 来修改流的数据，详见：[不可变数据](/cn/guide/immutable.cn)
+```tsx
+function ShoppingCart() {
+  const [items, items$] = usePipel([])
 
-```typescript
-import { useStream } from 'pipel-react'
-
-function Example() {
-  const stream$ = useStream({ obj: { name: 'pipeljs', age: 0 } })
-
-  // 无需使用扩展符 {...value, obj: {...value.obj, age: value.obj.age + 1}}
-  const updateAge = () => {
-    stream$.set((value) => (value.obj.age += 1))
-  }
-
-  return <button onClick={updateAge}>增加年龄</button>
-}
-```
-
-## 响应式数据融合
-
-pipel 流可以无缝地用于 React 的各种场景。你可以使用 `useObservable` 来订阅流的变化，使用 `effect$` 来执行副作用：
-
-```typescript
-import { usePipel, useObservable } from 'pipel-react'
-import { map, filter } from 'pipeljs'
-
-function Example() {
-  const [keyword, keyword$] = usePipel('')
-
-  // 使用操作符处理流
-  const filteredKeyword = useObservable(
-    keyword$.pipe(
-      filter(k => k.length > 2),
-      map(k => k.toUpperCase())
-    )
+  // 派生：总价
+  const total = useObservable(
+    items$.pipe(map((items) => items.reduce((sum, item) => sum + item.price, 0)))
   )
+
+  // 派生：商品数量
+  const count = useObservable(items$.pipe(map((items) => items.length)))
 
   return (
     <div>
-      <input
-        value={keyword}
-        onChange={e => keyword$.next(e.target.value)}
-      />
-      <p>过滤后的关键词: {filteredKeyword}</p>
+      <p>商品数量: {count}</p>
+      <p>总价: ${total}</p>
     </div>
   )
 }
 ```
 
-## 响应式和数据的解耦
+### 异步数据流
 
-使用 useState 的时候，数据和响应式是一体的，修改了数据就会触发重新渲染，没有办法做到条件响应式，比如：
+```tsx
+import { debounce, filter } from 'pipeljs'
 
-```typescript
-// wineList 会被外部频繁的修改
-const [wineList, setWineList] = useState(['Red Wine', 'White Wine', 'Sparkling Wine', 'Rosé Wine'])
-const [age, setAge] = useState(0)
+function UserSearch() {
+  const [query, query$] = usePipel('')
 
-// 每次 wineList 或 age 变化都会重新计算
-const availableWineList = useMemo(() => {
-  return age > 18 ? wineList : []
-}, [age, wineList])
-```
-
-如果想只有在年龄发生变化的时候获取一下 wineList 的最新值，年龄不变的时候不响应 wineList 的修改，useMemo 则无法做到。
-
-使用 pipel 流式编程则可以很好的对数据和响应式进行解耦：
-
-```typescript
-import { useStream, useObservable } from 'pipel-react'
-import { filter } from 'pipeljs'
-
-function Example() {
-  const wineList$ = useStream(['Red Wine', 'White Wine', 'Sparkling Wine', 'Rosé Wine'])
-  const age$ = useStream(0)
-
-  // 只有 age 大于 18 的时候，才可以获取到 wineList 的最新值
-  // 后续 wineList 的修改不会触发 availableWineList 的重新计算
-  const availableWineList = useObservable(
-    age$.pipe(
-      filter(age => age > 18)
-    ).then(() => wineList$.value)
-  )
-
-  return (
-    <div>
-      <p>年龄: {age$.value}</p>
-      <p>可用酒单: {availableWineList?.join(', ')}</p>
-    </div>
-  )
-}
-```
-
-## 异步数据流
-
-pipel-react 提供了强大的异步数据流处理能力：
-
-```typescript
-import { usePipel, useObservable } from 'pipel-react'
-import { debounce, map } from 'pipeljs'
-
-function SearchComponent() {
-  const [keyword, keyword$] = usePipel('')
-
-  // 防抖搜索
-  const searchResults = useObservable(
-    keyword$.pipe(
+  // 使用 useFetch 处理异步请求
+  const { data: results, loading } = useFetch(
+    query$.pipe(
       debounce(300),
-      filter(k => k.length > 0),
-      map(async k => {
-        const res = await fetch(`/api/search?q=${k}`)
-        return res.json()
-      })
-    )
+      filter((q) => q.length > 2),
+      map((q) => `/api/search?q=${q}`)
+    ),
+    { immediate: false }
   )
 
   return (
     <div>
-      <input
-        value={keyword}
-        onChange={e => keyword$.next(e.target.value)}
-        placeholder="搜索..."
-      />
-      <ul>
-        {searchResults?.map(item => (
-          <li key={item.id}>{item.name}</li>
-        ))}
-      </ul>
+      <input value={query} onChange={(e) => query$.next(e.target.value)} />
+      {loading && <div>搜索中...</div>}
+      <SearchResults results={results} />
     </div>
   )
 }
 ```
 
-## 状态同步
+## 最佳实践
 
-使用 `useSyncState` 可以实现 React 状态和流的双向同步：
+### 1. 保持 Stream 稳定
 
-```typescript
-import { useSyncState } from 'pipel-react'
+```tsx
+// ✅ 好：在组件外部创建
+const globalCounter$ = new Stream(0)
 
-function Example() {
-  const [count, setCount, count$] = useSyncState(0)
+function Component() {
+  const [count] = usePipel(globalCounter$)
+  return <div>{count}</div>
+}
 
-  // 修改 state 会同步到 stream
-  setCount(1)
-
-  // 修改 stream 会同步到 state
-  count$.next(2)
-
-  // 可以订阅 stream 的变化
-  useEffect(() => {
-    const child = count$.then(value => {
-      console.log('count changed:', value)
-    })
-    return () => child.unsubscribe()
-  }, [count$])
-
-  return <div>Count: {count}</div>
+// ❌ 避免：每次渲染都创建新 Stream
+function Component() {
+  const stream$ = new Stream(0) // 不好！
+  const [count] = usePipel(stream$)
+  return <div>{count}</div>
 }
 ```
+
+### 2. 使用 useCallback 稳定回调
+
+```tsx
+function Component() {
+  const [value, value$] = usePipel(0)
+
+  const handleChange = useCallback(
+    (newValue) => {
+      value$.next(newValue)
+    },
+    [value$]
+  )
+
+  return <Child onChange={handleChange} />
+}
+```
+
+### 3. 避免过度订阅
+
+```tsx
+// ✅ 好：使用 useObservable
+const doubled = useObservable(count$.pipe(map((x) => x * 2)))
+
+// ❌ 避免：手动订阅
+useEffect(() => {
+  const subscription = count$.then((value) => {
+    setDoubled(value * 2)
+  })
+  return () => subscription.unsubscribe()
+}, [count$])
+```
+
+### 4. 合理使用操作符
+
+```tsx
+// ✅ 好：链式调用
+const result = useObservable(
+  stream$.pipe(
+    debounce(300),
+    filter((x) => x > 0),
+    map((x) => x * 2)
+  )
+)
+
+// ❌ 避免：嵌套订阅
+const result1 = useObservable(stream$.pipe(debounce(300)))
+const result2 = useObservable(result1$.pipe(filter((x) => x > 0)))
+const result3 = useObservable(result2$.pipe(map((x) => x * 2)))
+```
+
+## 常见模式
+
+### 表单处理
+
+```tsx
+import { combine, map } from 'pipeljs'
+
+function LoginForm() {
+  const [username, username$] = usePipel('')
+  const [password, password$] = usePipel('')
+
+  const isValid = useObservable(
+    username$.pipe(
+      combine(password$),
+      map(([u, p]) => u.length > 0 && p.length >= 6)
+    )
+  )
+
+  const handleSubmit = () => {
+    if (isValid) {
+      // 提交表单
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input value={username} onChange={(e) => username$.next(e.target.value)} />
+      <input type="password" value={password} onChange={(e) => password$.next(e.target.value)} />
+      <button disabled={!isValid}>登录</button>
+    </form>
+  )
+}
+```
+
+### 实时搜索
+
+```tsx
+function LiveSearch() {
+  const [query, query$] = usePipel('')
+
+  const { data: results, loading } = useFetch(
+    query$.pipe(
+      debounce(300),
+      filter((q) => q.length > 2),
+      map((q) => `/api/search?q=${q}`)
+    ),
+    { immediate: false }
+  )
+
+  return (
+    <div>
+      <input value={query} onChange={(e) => query$.next(e.target.value)} placeholder="搜索..." />
+      {loading && <Spinner />}
+      <ResultList results={results} />
+    </div>
+  )
+}
+```
+
+### 无限滚动
+
+```tsx
+function InfiniteList() {
+  const [page, page$] = usePipel(1)
+
+  const { data, loading } = useFetch(page$.pipe(map((p) => `/api/items?page=${p}`)), {
+    immediate: true,
+  })
+
+  const loadMore = () => {
+    page$.next(page + 1)
+  }
+
+  return (
+    <div>
+      <ItemList items={data?.items || []} />
+      {loading && <Spinner />}
+      <button onClick={loadMore}>加载更多</button>
+    </div>
+  )
+}
+```
+
+## 下一步
+
+- [流式渲染](/guide/render) - 了解渲染优化
+- [不可变更新](/guide/immutable) - 学习状态更新最佳实践
+- [调试](/guide/debug) - 调试响应式应用

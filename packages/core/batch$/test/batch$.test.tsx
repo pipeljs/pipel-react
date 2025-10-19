@@ -13,7 +13,7 @@ describe('batch$', () => {
     const batched$ = batch$([stream1$, stream2$, stream3$])
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual([1, 2, 3])
@@ -27,7 +27,7 @@ describe('batch$', () => {
     const batched$ = batch$([stream1$, stream2$])
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     act(() => {
       stream1$.next(10)
@@ -50,7 +50,7 @@ describe('batch$', () => {
     const batched$ = batch$([])
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     expect(values).toHaveLength(0)
   })
@@ -60,7 +60,7 @@ describe('batch$', () => {
     const batched$ = batch$([stream$])
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual([42])
@@ -75,7 +75,7 @@ describe('batch$', () => {
     const batched$ = batch$([numberStream$, stringStream$, boolStream$])
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual([1, 'hello', true])
@@ -89,7 +89,7 @@ describe('batch$', () => {
     const batched$ = batch$([stream1$, stream2$])
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     act(() => {
       for (let i = 1; i <= 5; i++) {
@@ -111,7 +111,7 @@ describe('batch$', () => {
     const batched$ = batch$([userStream$, settingsStream$])
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual([
@@ -174,7 +174,7 @@ describe('batchWithFactory', () => {
     const batched$ = batchWithFactory(3, (index) => new Stream(index))
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual([0, 1, 2])
@@ -185,7 +185,7 @@ describe('batchWithFactory', () => {
     const batched$ = batchWithFactory(2, (index) => new Stream(`stream-${index}`))
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual(['stream-0', 'stream-1'])
@@ -201,7 +201,7 @@ describe('batchWithFactory', () => {
     })
 
     const values: any[] = []
-    batched$.subscribe((value) => values.push(value))
+    batched$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual([0, 1])
@@ -227,7 +227,7 @@ describe('combineStreams', () => {
     )
 
     const values: any[] = []
-    combined$.subscribe((value) => values.push(value))
+    combined$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toBe(30)
@@ -241,7 +241,7 @@ describe('combineStreams', () => {
     const combined$ = combineStreams([stream1$, stream2$], ([a, b]) => a * b)
 
     const values: any[] = []
-    combined$.subscribe((value) => values.push(value))
+    combined$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toBe(50)
@@ -263,7 +263,7 @@ describe('combineStreams', () => {
     const combined$ = combineStreams([nameStream$, ageStream$], ([name, age]) => ({ name, age }))
 
     const values: any[] = []
-    combined$.subscribe((value) => values.push(value))
+    combined$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual({ name: 'John', age: 30 })
@@ -280,7 +280,7 @@ describe('combineStreams', () => {
     )
 
     const values: any[] = []
-    combined$.subscribe((value) => values.push(value))
+    combined$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toBe('Hello World')
@@ -294,7 +294,7 @@ describe('combineStreams', () => {
     const combined$ = combineStreams([stream1$, stream2$], ([arr1, arr2]) => [...arr1, ...arr2])
 
     const values: any[] = []
-    combined$.subscribe((value) => values.push(value))
+    combined$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual([1, 2, 3, 4])
@@ -316,7 +316,7 @@ describe('combineStreams', () => {
     )
 
     const values: any[] = []
-    totalStream$.subscribe((value) => values.push(value))
+    totalStream$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toBe(330) // (100 * 3) * 1.1
@@ -339,7 +339,7 @@ describe('combineStreams', () => {
     )
 
     const values: any[] = []
-    formStream$.subscribe((value) => values.push(value))
+    formStream$.then((value) => values.push(value))
 
     await waitFor(() => {
       expect(values[0]).toEqual({
@@ -361,7 +361,7 @@ describe('combineStreams', () => {
       const [value, setValue] = React.useState(0)
 
       React.useEffect(() => {
-        const subscription = combined$.subscribe(setValue)
+        const subscription = combined$.then(setValue)
         return () => subscription.unsubscribe()
       }, [combined$])
 

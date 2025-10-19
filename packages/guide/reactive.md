@@ -1,200 +1,396 @@
 # Reactive Programming
 
-pipel-react provides powerful reactive stream programming capabilities that seamlessly integrate with React's state management:
+## What is Reactive Programming?
 
-1. Stream data automatically converts to React state, triggering component re-renders
-2. pipel-react provides the [to$](/core/usePipel/index.en#to$) method to convert React state into streams
-3. Streams offer rich operators for data transformation, filtering, composition, and more
+Reactive programming is a programming paradigm **centered around data flows**. In reactive programming, data changes automatically propagate to all dependent parts.
 
-::: tip Note
+### Traditional vs Reactive Programming
 
-- pipel-react requires React 18.0+, recommended to use React 18.2.0+ for the best experience
-- Stream data follows unidirectional data flow, updated via `stream$.next()` or `stream$.set()`
-- Subscriptions are automatically cleaned up when components unmount
-
-:::
-
-## Reactive Data Rendering
-
-Streams can be used directly in React components. Use the `usePipel` hook to convert streams into React state:
+**Traditional Programming (Imperative):**
 
 ```tsx
-import { usePipel } from 'pipel-react'
+let a = 1
+let b = 2
+let c = a + b // c = 3
 
-function Example() {
-  const [name, name$] = usePipel('pipeljs')
+a = 10
+// c is still 3, doesn't auto-update
+```
 
-  const updateName = () => {
-    name$.next('pipel-react')
+**Reactive Programming (Declarative):**
+
+```tsx
+const [a, a$] = usePipel(1)
+const [b, b$] = usePipel(2)
+
+const c = useObservable(
+  a$.pipe(
+    combineLatest(b$),
+    map(([a, b]) => a + b)
+  )
+)
+
+a$.next(10)
+// c automatically updates to 12
+```
+
+## Stream
+
+Stream is the core concept of Pipel-React, representing **a sequence of values over time**.
+
+### Stream Characteristics
+
+1. **Continuous** - Can emit multiple values
+2. **Observable** - Can listen to value changes
+3. **Composable** - Can be combined and transformed via operators
+
+### Creating Streams
+
+```tsx
+import { usePipel, useStream } from 'pipel-react'
+
+// Method 1: Create via usePipel
+const [count, count$] = usePipel(0)
+
+// Method 2: Create via useStream
+const count$ = useStream(0)
+
+// Method 3: Create from Promise
+const data$ = useStream(fetch('/api/data'))
+```
+
+### Subscribing to Streams
+
+```tsx
+const [count, count$] = usePipel(0)
+
+// Subscribe to changes
+count$.then((value) => {
+  console.log('Count changed:', value)
+})
+
+// Update value
+count$.next(1) // Output: Count changed: 1
+count$.next(2) // Output: Count changed: 2
+```
+
+## Operators
+
+Operators are used to transform and combine streams.
+
+### Transformation Operators
+
+#### map - Map Values
+
+```tsx
+const [count, count$] = usePipel(1)
+
+const doubled = useObservable(count$.pipe(map((x) => x * 2)))
+
+count$.next(5) // doubled = 10
+```
+
+#### filter - Filter Values
+
+```tsx
+const [value, value$] = usePipel(0)
+
+const positiveOnly = useObservable(value$.pipe(filter((x) => x > 0)))
+
+value$.next(-1) // positiveOnly unchanged
+value$.next(5) // positiveOnly = 5
+```
+
+### Time-based Operators
+
+#### debounce - Debounce
+
+```tsx
+const [keyword, keyword$] = usePipel('')
+
+const debouncedKeyword = useObservable(
+  keyword$.pipe(
+    debounce(300) // 300ms debounce
+  )
+)
+
+// User quickly types "hello"
+keyword$.next('h')
+keyword$.next('he')
+keyword$.next('hel')
+keyword$.next('hell')
+keyword$.next('hello')
+// Only the last value emits after 300ms
+```
+
+#### throttle - Throttle
+
+```tsx
+const [clicks, clicks$] = usePipel(0)
+
+const throttledClicks = useObservable(
+  clicks$.pipe(
+    throttle(1000) // Max once per second
+  )
+)
+```
+
+### Combination Operators
+
+#### combineLatest - Combine Latest Values
+
+```tsx
+const [firstName, firstName$] = usePipel('John')
+const [lastName, lastName$] = usePipel('Doe')
+
+const fullName = useObservable(
+  firstName$.pipe(
+    combineLatest(lastName$),
+    map(([first, last]) => `${first} ${last}`)
+  )
+)
+
+firstName$.next('Jane') // fullName = "Jane Doe"
+lastName$.next('Smith') // fullName = "Jane Smith"
+```
+
+#### merge - Merge Multiple Streams
+
+```tsx
+const [stream1$] = usePipel(1)
+const [stream2$] = usePipel(2)
+
+const merged = useObservable(stream1$.pipe(merge(stream2$)))
+
+stream1$.next(10) // merged = 10
+stream2$.next(20) // merged = 20
+```
+
+## Data Flow Patterns
+
+### Unidirectional Data Flow
+
+```tsx
+function TodoApp() {
+  const [todos, todos$] = usePipel([])
+
+  const addTodo = (text) => {
+    todos$.next([...todos, { id: Date.now(), text }])
+  }
+
+  const removeTodo = (id) => {
+    todos$.next(todos.filter((t) => t.id !== id))
   }
 
   return (
     <div>
-      <p>{name}</p>
-      <button onClick={updateName}>Update</button>
+      <TodoList todos={todos} onRemove={removeTodo} />
+      <AddTodo onAdd={addTodo} />
     </div>
   )
 }
 ```
 
-## Reactive Data Updates
+### Derived State
 
-pipel provides [next](https://pipeljs.github.io/pipel-doc/en/api/stream.html#next) and [set](https://pipeljs.github.io/pipel-doc/en/api/stream.html#set) to modify stream data. See: [Immutable Data](/guide/immutable.en)
+```tsx
+function ShoppingCart() {
+  const [items, items$] = usePipel([])
 
-```typescript
-import { useStream } from 'pipel-react'
-
-function Example() {
-  const stream$ = useStream({ obj: { name: 'pipeljs', age: 0 } })
-
-  // No need for spread operators {...value, obj: {...value.obj, age: value.obj.age + 1}}
-  const updateAge = () => {
-    stream$.set((value) => (value.obj.age += 1))
-  }
-
-  return <button onClick={updateAge}>Increase Age</button>
-}
-```
-
-## Reactive Data Integration
-
-pipel streams integrate seamlessly with various React scenarios. Use `useObservable` to subscribe to stream changes and `effect$` to execute side effects:
-
-```typescript
-import { usePipel, useObservable } from 'pipel-react'
-import { map, filter } from 'pipeljs'
-
-function Example() {
-  const [keyword, keyword$] = usePipel('')
-
-  // Process stream with operators
-  const filteredKeyword = useObservable(
-    keyword$.pipe(
-      filter(k => k.length > 2),
-      map(k => k.toUpperCase())
-    )
+  // Derived: total price
+  const total = useObservable(
+    items$.pipe(map((items) => items.reduce((sum, item) => sum + item.price, 0)))
   )
+
+  // Derived: item count
+  const count = useObservable(items$.pipe(map((items) => items.length)))
 
   return (
     <div>
-      <input
-        value={keyword}
-        onChange={e => keyword$.next(e.target.value)}
-      />
-      <p>Filtered keyword: {filteredKeyword}</p>
+      <p>Items: {count}</p>
+      <p>Total: ${total}</p>
     </div>
   )
 }
 ```
 
-## Decoupling Reactivity and Data
+### Async Data Flow
 
-With useState, data and reactivity are coupled - modifying data always triggers re-renders. There's no way to achieve conditional reactivity:
+```tsx
+function UserSearch() {
+  const [query, query$] = usePipel('')
 
-```typescript
-// wineList is frequently modified externally
-const [wineList, setWineList] = useState(['Red Wine', 'White Wine', 'Sparkling Wine', 'Rosé Wine'])
-const [age, setAge] = useState(0)
-
-// Recalculates every time wineList or age changes
-const availableWineList = useMemo(() => {
-  return age > 18 ? wineList : []
-}, [age, wineList])
-```
-
-If you want to get the latest wineList value only when age changes, ignoring wineList modifications when age stays the same, useMemo cannot achieve this.
-
-Using pipel stream programming allows excellent decoupling of data and reactivity:
-
-```typescript
-import { useStream, useObservable } from 'pipel-react'
-import { filter } from 'pipeljs'
-
-function Example() {
-  const wineList$ = useStream(['Red Wine', 'White Wine', 'Sparkling Wine', 'Rosé Wine'])
-  const age$ = useStream(0)
-
-  // Only get latest wineList value when age > 18
-  // Subsequent wineList modifications won't trigger availableWineList recalculation
-  const availableWineList = useObservable(
-    age$.pipe(
-      filter(age => age > 18)
-    ).then(() => wineList$.value)
-  )
-
-  return (
-    <div>
-      <p>Age: {age$.value}</p>
-      <p>Available wines: {availableWineList?.join(', ')}</p>
-    </div>
-  )
-}
-```
-
-## Async Data Streams
-
-pipel-react provides powerful async data stream processing:
-
-```typescript
-import { usePipel, useObservable } from 'pipel-react'
-import { debounce, map } from 'pipeljs'
-
-function SearchComponent() {
-  const [keyword, keyword$] = usePipel('')
-
-  // Debounced search
-  const searchResults = useObservable(
-    keyword$.pipe(
+  const results = useObservable(
+    query$.pipe(
       debounce(300),
-      filter(k => k.length > 0),
-      map(async k => {
-        const res = await fetch(`/api/search?q=${k}`)
-        return res.json()
-      })
+      filter((q) => q.length > 2),
+      switchMap((q) => fetch(`/api/search?q=${q}`).then((r) => r.json()))
     )
   )
 
   return (
     <div>
-      <input
-        value={keyword}
-        onChange={e => keyword$.next(e.target.value)}
-        placeholder="Search..."
-      />
-      <ul>
-        {searchResults?.map(item => (
-          <li key={item.id}>{item.name}</li>
-        ))}
-      </ul>
+      <input value={query} onChange={(e) => query$.next(e.target.value)} />
+      <SearchResults results={results} />
     </div>
   )
 }
 ```
 
-## State Synchronization
+## Best Practices
 
-Use `useSyncState` for bidirectional synchronization between React state and streams:
+### 1. Keep Streams Stable
 
-```typescript
-import { useSyncState } from 'pipel-react'
+```tsx
+// ✅ Good: Create outside component
+const globalCounter$ = new Stream(0)
 
-function Example() {
-  const [count, setCount, count$] = useSyncState(0)
+function Component() {
+  const [count] = usePipel(globalCounter$)
+  return <div>{count}</div>
+}
 
-  // Modifying state syncs to stream
-  setCount(1)
-
-  // Modifying stream syncs to state
-  count$.next(2)
-
-  // Subscribe to stream changes
-  useEffect(() => {
-    const child = count$.then(value => {
-      console.log('count changed:', value)
-    })
-    return () => child.unsubscribe()
-  }, [count$])
-
-  return <div>Count: {count}</div>
+// ❌ Avoid: Create new stream on every render
+function Component() {
+  const stream$ = new Stream(0) // Bad!
+  const [count] = usePipel(stream$)
+  return <div>{count}</div>
 }
 ```
+
+### 2. Use useCallback for Stable Callbacks
+
+```tsx
+function Component() {
+  const [value, value$] = usePipel(0)
+
+  const handleChange = useCallback(
+    (newValue) => {
+      value$.next(newValue)
+    },
+    [value$]
+  )
+
+  return <Child onChange={handleChange} />
+}
+```
+
+### 3. Avoid Over-subscribing
+
+```tsx
+// ✅ Good: Use useObservable
+const doubled = useObservable(count$.pipe(map((x) => x * 2)))
+
+// ❌ Avoid: Manual subscription
+useEffect(() => {
+  const subscription = count$.then((value) => {
+    setDoubled(value * 2)
+  })
+  return () => subscription.unsubscribe()
+}, [count$])
+```
+
+### 4. Use Operators Wisely
+
+```tsx
+// ✅ Good: Chain operators
+const result = useObservable(
+  stream$.pipe(
+    debounce(300),
+    filter((x) => x > 0),
+    map((x) => x * 2)
+  )
+)
+
+// ❌ Avoid: Nested subscriptions
+const result1 = useObservable(stream$.pipe(debounce(300)))
+const result2 = useObservable(result1$.pipe(filter((x) => x > 0)))
+const result3 = useObservable(result2$.pipe(map((x) => x * 2)))
+```
+
+## Common Patterns
+
+### Form Handling
+
+```tsx
+function LoginForm() {
+  const [username, username$] = usePipel('')
+  const [password, password$] = usePipel('')
+
+  const isValid = useObservable(
+    username$.pipe(
+      combineLatest(password$),
+      map(([u, p]) => u.length > 0 && p.length >= 6)
+    )
+  )
+
+  const handleSubmit = () => {
+    if (isValid) {
+      // Submit form
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input value={username} onChange={(e) => username$.next(e.target.value)} />
+      <input type="password" value={password} onChange={(e) => password$.next(e.target.value)} />
+      <button disabled={!isValid}>Login</button>
+    </form>
+  )
+}
+```
+
+### Live Search
+
+```tsx
+function LiveSearch() {
+  const [query, query$] = usePipel('')
+
+  const { data: results, loading } = useFetch(
+    query$.pipe(
+      debounce(300),
+      filter((q) => q.length > 2),
+      map((q) => `/api/search?q=${q}`)
+    ),
+    { immediate: false }
+  )
+
+  return (
+    <div>
+      <input value={query} onChange={(e) => query$.next(e.target.value)} placeholder="Search..." />
+      {loading && <Spinner />}
+      <ResultList results={results} />
+    </div>
+  )
+}
+```
+
+### Infinite Scroll
+
+```tsx
+function InfiniteList() {
+  const [page, page$] = usePipel(1)
+
+  const { data, loading } = useFetch(page$.pipe(map((p) => `/api/items?page=${p}`)), {
+    immediate: true,
+  })
+
+  const loadMore = () => {
+    page$.next(page + 1)
+  }
+
+  return (
+    <div>
+      <ItemList items={data?.items || []} />
+      {loading && <Spinner />}
+      <button onClick={loadMore}>Load More</button>
+    </div>
+  )
+}
+```
+
+## Next Steps
+
+- [Stream Rendering](/guide/render) - Learn about rendering optimization
+- [Immutable Updates](/guide/immutable) - Best practices for state updates
+- [Debugging](/guide/debug) - Debug reactive applications

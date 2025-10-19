@@ -271,6 +271,315 @@ function ConditionalRender() {
 }
 ```
 
+### 过滤列表渲染
+
+```tsx
+import { useStream, usePipelRender } from 'pipel-react'
+import { combine, map } from 'pipeljs'
+
+function FilteredList() {
+  const items$ = useStream([
+    { id: 1, name: 'Apple', category: 'fruit' },
+    { id: 2, name: 'Carrot', category: 'vegetable' },
+    { id: 3, name: 'Banana', category: 'fruit' },
+  ])
+
+  const filter$ = useStream('all')
+
+  const filteredItems$ = items$.pipe(
+    combine(filter$),
+    map(([items, filter]) =>
+      filter === 'all' ? items : items.filter((item) => item.category === filter)
+    )
+  )
+
+  const renderList = usePipelRender(filteredItems$, (items) => (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>{item.name}</li>
+      ))}
+    </ul>
+  ))
+
+  const renderFilter = usePipelRender(filter$, (filter) => (
+    <select value={filter} onChange={(e) => filter$.next(e.target.value)}>
+      <option value="all">全部</option>
+      <option value="fruit">水果</option>
+      <option value="vegetable">蔬菜</option>
+    </select>
+  ))
+
+  return (
+    <div>
+      {renderFilter}
+      {renderList}
+    </div>
+  )
+}
+```
+
+## 异步渲染
+
+### 渲染异步数据
+
+```tsx
+import { usePipel } from 'pipel-react'
+
+function AsyncData() {
+  const [data, data$] = usePipel(fetch('/api/data').then((r) => r.json()))
+
+  if (!data) return <div>加载中...</div>
+
+  return <div>{data.message}</div>
+}
+```
+
+### 使用 useFetch 渲染异步数据
+
+```tsx
+import { useFetch } from 'pipel-react'
+
+function UserProfile({ userId }) {
+  const { data, loading, error } = useFetch(`/api/users/${userId}`, { immediate: true })
+
+  if (loading) return <div>加载中...</div>
+  if (error) return <div>错误: {error.message}</div>
+  if (!data) return <div>无数据</div>
+
+  return (
+    <div>
+      <h1>{data.name}</h1>
+      <p>{data.email}</p>
+    </div>
+  )
+}
+```
+
+### 渲染多个异步数据源
+
+```tsx
+import { useStream, usePipel } from 'pipel-react'
+
+function MultipleAsyncData() {
+  const user$ = useStream(fetch('/api/user').then((r) => r.json()))
+  const posts$ = useStream(fetch('/api/posts').then((r) => r.json()))
+
+  const [user] = usePipel(user$)
+  const [posts] = usePipel(posts$)
+
+  if (!user || !posts) return <div>加载中...</div>
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <PostList posts={posts} />
+    </div>
+  )
+}
+```
+
+## 实时渲染
+
+### WebSocket 实时数据渲染
+
+```tsx
+import { fromEvent } from 'pipel-react'
+import { useEffect } from 'react'
+
+function LiveChat() {
+  const [messages, messages$] = usePipel([])
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8080')
+
+    const message$ = fromEvent(ws, 'message')
+
+    const subscription = message$.then((event) => {
+      const newMessage = JSON.parse(event.data)
+      messages$.next([...messages, newMessage])
+    })
+
+    return () => {
+      subscription.unsubscribe()
+      ws.close()
+    }
+  }, [])
+
+  const renderMessages = usePipelRender(messages$, (msgs) => (
+    <div className="messages">
+      {msgs.map((msg, i) => (
+        <div key={i} className="message">
+          {msg.text}
+        </div>
+      ))}
+    </div>
+  ))
+
+  return (
+    <div>
+      <h2>实时聊天</h2>
+      {renderMessages}
+    </div>
+  )
+}
+```
+
+### 轮询数据渲染
+
+```tsx
+import { useEffect } from 'react'
+import { usePipel, usePipelRender } from 'pipel-react'
+
+function LiveData() {
+  const [data, data$] = usePipel(null)
+
+  useEffect(() => {
+    // 立即获取一次数据
+    fetch('/api/data')
+      .then((r) => r.json())
+      .then((newData) => data$.next(newData))
+
+    // 使用 setInterval 实现轮询
+    const intervalId = setInterval(async () => {
+      const newData = await fetch('/api/data').then((r) => r.json())
+      data$.next(newData)
+    }, 5000)
+
+    return () => clearInterval(intervalId)
+  }, [data$])
+
+  const renderData = usePipelRender(data$, (d) =>
+    d ? <div>最新数据: {d.value}</div> : <div>加载中...</div>
+  )
+
+  return (
+    <div>
+      <h2>实时数据</h2>
+      {renderData}
+    </div>
+  )
+}
+```
+
+## 性能最佳实践
+
+### 1. 使用 key 优化列表渲染
+
+```tsx
+// ✅ 好：使用稳定的 key
+{
+  items.map((item) => <Item key={item.id} data={item} />)
+}
+
+// ❌ 避免：使用索引作为 key
+{
+  items.map((item, index) => <Item key={index} data={item} />)
+}
+```
+
+### 2. 拆分大组件
+
+```tsx
+// ✅ 好：拆分成小组件，每个组件订阅自己的流
+function TodoApp() {
+  const todos$ = useStream([])
+
+  return (
+    <div>
+      <TodoList todos$={todos$} />
+      <TodoStats todos$={todos$} />
+      <TodoFilters />
+    </div>
+  )
+}
+
+function TodoList({ todos$ }) {
+  const renderList = usePipelRender(todos$, (todos) => (
+    <ul>
+      {todos.map((todo) => (
+        <TodoItem key={todo.id} todo={todo} />
+      ))}
+    </ul>
+  ))
+
+  return renderList
+}
+
+// ❌ 避免：所有逻辑在一个组件
+function TodoApp() {
+  const [todos, setTodos] = useState([])
+  // 大量的状态和逻辑...
+  return <div>{/* 大量的 JSX... */}</div>
+}
+```
+
+### 3. 使用 change 操作符避免重复渲染
+
+```tsx
+import { debounce, filter, change } from 'pipeljs'
+import { usePipel, useObservable } from 'pipel-react'
+
+function SearchResults() {
+  const [query, query$] = usePipel('')
+
+  // 只在查询真正改变时才搜索
+  const searchQuery$ = query$.pipe(
+    debounce(300),
+    change(), // 避免相同值触发搜索
+    filter((q) => q.length > 2)
+  )
+
+  const { data: results, loading } = useFetch(searchQuery$.pipe(map((q) => `/api/search?q=${q}`)), {
+    immediate: false,
+  })
+
+  return (
+    <div>
+      <input value={query} onChange={(e) => query$.next(e.target.value)} />
+      {loading && <div>搜索中...</div>}
+      <ResultList results={results} />
+    </div>
+  )
+}
+```
+
+### 4. 使用 useMemo 缓存计算
+
+```tsx
+import { useMemo } from 'react'
+import { usePipel } from 'pipel-react'
+
+function ExpensiveComponent() {
+  const [data, data$] = usePipel(largeDataSet)
+
+  const processedData = useMemo(() => {
+    return data.map((item) => expensiveOperation(item))
+  }, [data])
+
+  return <DataView data={processedData} />
+}
+```
+
+### 5. 延迟渲染非关键内容
+
+```tsx
+import { lazy, Suspense } from 'react'
+
+const HeavyComponent = lazy(() => import('./HeavyComponent'))
+
+function App() {
+  return (
+    <div>
+      <Header />
+      <MainContent />
+      <Suspense fallback={<div>加载中...</div>}>
+        <HeavyComponent />
+      </Suspense>
+    </div>
+  )
+}
+```
+
 ## 最佳实践
 
 1. **适用场景**：当你有多个独立的数据流，且希望它们的变化不互相影响时使用
@@ -284,3 +593,10 @@ function ConditionalRender() {
 - 组件卸载时会自动取消订阅，无需手动清理
 - 渲染函数应该是纯函数，避免副作用
 - 对于复杂的渲染逻辑，考虑使用 `useMemo` 优化
+- `usePipelRender` 返回的是 React 元素，可以直接在 JSX 中使用
+
+## 下一步
+
+- [不可变更新](/guide/immutable) - 学习如何正确更新状态
+- [调试](/guide/debug) - 调试渲染问题
+- [API 参考](/core/usePipelRender/) - 了解渲染相关 API

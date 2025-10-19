@@ -62,7 +62,7 @@ function SearchBox() {
 }
 ```
 
-### 3. HTTP Request
+### 3. HTTP Requests
 
 ```tsx
 import { useFetch } from 'pipel-react'
@@ -88,7 +88,7 @@ function UserProfile({ userId }) {
 
 `usePipel` returns a tuple:
 
-- First element: Current value (React state)
+- First element: current value (React state)
 - Second element: Stream object (for updates)
 
 ```tsx
@@ -103,7 +103,7 @@ stream$.then((value) => console.log(value))
 
 ### Operators
 
-Use operators to transform streams:
+Transform streams using operators:
 
 ```tsx
 import { map, filter, debounce } from 'pipel-react'
@@ -117,9 +117,9 @@ const transformed = useObservable(
 )
 ```
 
-### Automatic Cleanup
+### Auto Cleanup
 
-All subscriptions are automatically cleaned up when the component unmounts:
+All subscriptions are automatically cleaned up on component unmount:
 
 ```tsx
 function Component() {
@@ -130,6 +130,6 @@ function Component() {
 
 ## Next Steps
 
-- [Reactive Programming](/guide/reactive.en) - Learn core concepts
-- [API Reference](/core/usePipel/index.en) - Explore all APIs
+- [Reactive Programming](/guide/reactive) - Learn core concepts
+- [API Reference](/core/usePipel/) - Explore all APIs
 - [Examples](https://github.com/pipeljs/pipel-react/tree/main/examples) - See more examples
