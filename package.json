@@ -1,6 +1,6 @@
 {
   "name": "pipel-react",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Pipel-based Streaming Programming Library for React",
   "author": "PipelJS Team <https://github.com/pipeljs>",
   "repository": "https://github.com/pipeljs/pipel-react",
