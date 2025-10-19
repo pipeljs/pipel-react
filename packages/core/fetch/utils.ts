@@ -36,7 +36,7 @@ export function headersToObject(headers: HeadersInit | undefined) {
 
 export function combineCallbacks<T = any>(
   combination: Combination,
-  ...callbacks: ((ctx: T) => void | Partial<T> | Promise<void | Partial<T>>) | undefined[]
+  ...callbacks: (((ctx: T) => void | Partial<T> | Promise<void | Partial<T>>) | undefined)[]
 ) {
   if (combination === 'overwrite') {
     // use last callback

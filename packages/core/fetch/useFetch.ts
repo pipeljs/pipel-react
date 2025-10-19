@@ -6,38 +6,15 @@ import type {
   HttpMethod,
   UseFetchOptions,
   UseFetchReturn,
-  UseFetchResult,
   BeforeFetchContext,
   InternalConfig,
 } from './types'
-import {
-  joinPaths,
-  isAbsoluteURL,
-  headersToObject,
-  addQueryParams,
-  getValue,
-  createEventHook,
-} from './utils'
+import { headersToObject, addQueryParams, getValue, createEventHook } from './utils'
 
 const payloadMapping: Record<string, string> = {
   json: 'application/json',
   text: 'text/plain',
 }
-
-const requestInitKeys: (keyof RequestInit)[] = [
-  'body',
-  'cache',
-  'credentials',
-  'headers',
-  'integrity',
-  'keepalive',
-  'method',
-  'mode',
-  'redirect',
-  'referrer',
-  'referrerPolicy',
-  'signal',
-]
 
 export function useFetch<T>(
   url: string | Stream<string> | Observable<string>,
@@ -287,7 +264,10 @@ export function useFetch<T>(
           if (cacheKey) {
             ;(useFetch as any)._cache.set(cacheKey, responseData)
             if (cacheSetting?.expiration)
-              setTimeout(() => (useFetch as any)._cache.delete(cacheKey || ''), cacheSetting.expiration)
+              setTimeout(
+                () => (useFetch as any)._cache.delete(cacheKey || ''),
+                cacheSetting.expiration
+              )
           }
           if (!isSSEStream && !isNDJSONStream) {
             promise$.next(Promise.resolve(responseData))
@@ -370,8 +350,8 @@ export function useFetch<T>(
 
   // Watch for url changes
   useEffect(() => {
-    if (options.refetch && (url instanceof Observable || url instanceof Stream)) {
-      const child = url.then(() => executeFun())
+    if (options.refetch && (url instanceof Observable || (url as any) instanceof Stream)) {
+      const child = (url as Observable<string>).then(() => executeFun())
       return () => child.unsubscribe()
     }
   }, [url, options.refetch, executeFun])
@@ -386,7 +366,8 @@ export function useFetch<T>(
 
           if (
             options.refetch &&
-            (config.current.payload instanceof Observable || config.current.payload instanceof Stream)
+            (config.current.payload instanceof Observable ||
+              config.current.payload instanceof Stream)
           ) {
             config.current.payload.then(() => executeFun())
           }
@@ -404,37 +385,7 @@ export function useFetch<T>(
     [loading, options.refetch, executeFun]
   )
 
-  const waitUntilFinished = useCallback(() => {
-    return new Promise<UseFetchReturn<T>>((resolve, reject) => {
-      const checkFinished = () => {
-        if (isFinished) {
-          error ? reject(shell) : resolve(shell)
-        } else {
-          setTimeout(checkFinished, 50)
-        }
-      }
-      checkFinished()
-    })
-  }, [isFinished, error])
-
-  const setType = useCallback(
-    (type: DataType) => {
-      return () => {
-        if (!loading) {
-          config.current.type = type
-          return {
-            ...shell,
-            then(onFulfilled: any, onRejected: any) {
-              return waitUntilFinished().then(onFulfilled, onRejected)
-            },
-          } as any
-        }
-        return undefined
-      }
-    },
-    [loading, waitUntilFinished]
-  )
-
+  // 先创建 shell 对象的基础部分
   const shell: UseFetchReturn<T> = {
     isFinished,
     loading,
@@ -454,21 +405,69 @@ export function useFetch<T>(
     onFetchResponse: responseEvent.on,
     onFetchError: errorEvent.on,
     onFetchFinally: finallyEvent.on,
-    // method
-    get: setMethod('GET'),
-    put: setMethod('PUT'),
-    post: setMethod('POST'),
-    delete: setMethod('DELETE'),
-    patch: setMethod('PATCH'),
-    head: setMethod('HEAD'),
-    options: setMethod('OPTIONS'),
-    // type
-    json: setType('json'),
-    text: setType('text'),
-    blob: setType('blob'),
-    arrayBuffer: setType('arrayBuffer'),
-    formData: setType('formData'),
+    // method - 占位，稍后赋值
+    get: null as any,
+    put: null as any,
+    post: null as any,
+    delete: null as any,
+    patch: null as any,
+    head: null as any,
+    options: null as any,
+    // type - 占位，稍后赋值
+    json: null as any,
+    text: null as any,
+    blob: null as any,
+    arrayBuffer: null as any,
+    formData: null as any,
   }
+
+  const waitUntilFinished = useCallback(() => {
+    return new Promise<UseFetchReturn<T>>((resolve, reject) => {
+      const checkFinished = () => {
+        if (isFinished) {
+          if (error) {
+            reject(shell)
+          } else {
+            resolve(shell)
+          }
+        } else {
+          setTimeout(checkFinished, 50)
+        }
+      }
+      checkFinished()
+    })
+  }, [isFinished, error])
+
+  const setType = useCallback(
+    (type: DataType) => {
+      return () => {
+        config.current.type = type
+        return {
+          ...shell,
+          then(onFulfilled: any, onRejected: any) {
+            return waitUntilFinished().then(onFulfilled, onRejected)
+          },
+        } as any
+      }
+    },
+    [waitUntilFinished]
+  )
+
+  // 赋值 method 方法
+  shell.get = setMethod('GET')
+  shell.put = setMethod('PUT')
+  shell.post = setMethod('POST')
+  shell.delete = setMethod('DELETE')
+  shell.patch = setMethod('PATCH')
+  shell.head = setMethod('HEAD')
+  shell.options = setMethod('OPTIONS')
+
+  // 赋值 type 方法
+  shell.json = setType('json')
+  shell.text = setType('text')
+  shell.blob = setType('blob')
+  shell.arrayBuffer = setType('arrayBuffer')
+  shell.formData = setType('formData')
 
   return {
     ...shell,

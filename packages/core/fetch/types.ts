@@ -1,4 +1,4 @@
-import { Stream, Observable } from '../usePipel'
+import { Stream } from '../usePipel'
 
 export type DataType = 'text' | 'json' | 'blob' | 'arrayBuffer' | 'formData'
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS'
@@ -110,7 +110,9 @@ export interface UseFetchOptions extends RequestInit {
    * Will run immediately after the fetch request is returned.
    * Runs after any 2xx response
    */
-  afterFetch?: (ctx: AfterFetchContext) => Promise<Partial<AfterFetchContext>> | Partial<AfterFetchContext>
+  afterFetch?: (
+    ctx: AfterFetchContext
+  ) => Promise<Partial<AfterFetchContext>> | Partial<AfterFetchContext>
 
   /**
    * Will run immediately after the fetch request is returned.

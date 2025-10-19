@@ -32,13 +32,11 @@ import { usePipel } from 'pipel-react'
 
 function Counter() {
   const [count, count$] = usePipel(0)
-  
+
   return (
     <div>
       <p>Count: {count}</p>
-      <button onClick={() => count$.next(count + 1)}>
-        Increment
-      </button>
+      <button onClick={() => count$.next(count + 1)}>Increment</button>
     </div>
   )
 }
@@ -51,20 +49,15 @@ import { usePipel, useObservable, debounce, filter } from 'pipel-react'
 
 function SearchBox() {
   const [keyword, keyword$] = usePipel('')
-  
+
   const debouncedKeyword = useObservable(
     keyword$.pipe(
       debounce(300),
-      filter(k => k.length > 2)
+      filter((k) => k.length > 2)
     )
   )
-  
-  return (
-    <input
-      value={keyword}
-      onChange={e => keyword$.next(e.target.value)}
-    />
-  )
+
+  return <input value={keyword} onChange={(e) => keyword$.next(e.target.value)} />
 }
 ```
 
@@ -74,14 +67,11 @@ function SearchBox() {
 import { useFetch } from 'pipel-react'
 
 function UserProfile({ userId }) {
-  const { data, loading, error, refetch } = useFetch(
-    `/api/users/${userId}`,
-    { immediate: true }
-  )
-  
+  const { data, loading, error, refetch } = useFetch(`/api/users/${userId}`, { immediate: true })
+
   if (loading) return <div>Loading...</div>
   if (error) return <div>Error: {error.message}</div>
-  
+
   return (
     <div>
       <h1>{data.name}</h1>
@@ -95,23 +85,23 @@ function UserProfile({ userId }) {
 
 ### Hooks
 
-| Hook | Description |
-|------|-------------|
-| `usePipel` | Convert Stream/Observable to React state |
-| `useStream` | Create a stable Stream instance |
-| `useObservable` | Subscribe to Observable and return value |
-| `to$` | Convert React state to Stream |
-| `effect$` | Create side effect stream |
-| `useSyncState` | Bidirectional sync between state and stream |
-| `usePipelRender` | Stream-based component rendering |
-| `persistStream$` | Create persistent stream with localStorage |
+| Hook             | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `usePipel`       | Convert Stream/Observable to React state    |
+| `useStream`      | Create a stable Stream instance             |
+| `useObservable`  | Subscribe to Observable and return value    |
+| `to$`            | Convert React state to Stream               |
+| `effect$`        | Create side effect stream                   |
+| `useSyncState`   | Bidirectional sync between state and stream |
+| `usePipelRender` | Stream-based component rendering            |
+| `persistStream$` | Create persistent stream with localStorage  |
 
 ### HTTP
 
-| API | Description |
-|-----|-------------|
-| `useFetch` | HTTP request hook with auto state management |
-| `createFetch` | Create custom fetch hook with config |
+| API           | Description                                  |
+| ------------- | -------------------------------------------- |
+| `useFetch`    | HTTP request hook with auto state management |
+| `createFetch` | Create custom fetch hook with config         |
 
 ### Operators
 
@@ -123,6 +113,23 @@ All operators from PipelJS are re-exported:
 - **Time**: `debounce`, `throttle`, `delay`, `timeout`
 - **Error**: `catchError`, `retry`
 - **Utility**: `tap`, `share`, `startWith`, `endWith`
+
+## 📖 Documentation
+
+### Getting Started
+
+- [Getting Started Guide](./docs/GETTING_STARTED.md) - Quick setup and installation
+- [Project Overview](./docs/PROJECT_OVERVIEW.md) - Project structure and architecture
+
+### API Documentation
+
+- [API Reference](./docs/API_REFERENCE.md) - Complete API documentation
+- [Quick Reference](./docs/QUICK_REFERENCE.md) - Cheat sheet for common patterns
+
+### VitePress Docs
+
+- Run `pnpm docs:dev` to start the interactive documentation
+- Visit [Online Documentation](https://pipeljs.github.io/pipel-react/) for the full guide
 
 ## 📖 Examples
 
@@ -190,9 +197,7 @@ function useObservable<T>(observable$: Observable<T>, defaultValue: T): T
 **Example:**
 
 ```tsx
-const doubled = useObservable(
-  count$.pipe(map(x => x * 2))
-)
+const doubled = useObservable(count$.pipe(map((x) => x * 2)))
 ```
 
 ### to$
@@ -212,7 +217,7 @@ const keyword$ = to$(keyword)
 const results = useObservable(
   keyword$.pipe(
     debounce(300),
-    map(k => fetchResults(k))
+    map((k) => fetchResults(k))
   )
 )
 ```
@@ -222,10 +227,7 @@ const results = useObservable(
 Create side effect stream.
 
 ```tsx
-function effect$<T>(
-  observable$: Observable<T>,
-  callback: (value: T) => void | (() => void)
-): void
+function effect$<T>(observable$: Observable<T>, callback: (value: T) => void | (() => void)): void
 ```
 
 **Example:**
@@ -242,9 +244,7 @@ effect$(count$, (value) => {
 Bidirectional sync between React state and Stream.
 
 ```tsx
-function useSyncState<T>(
-  initialValue: T
-): [T, Dispatch<SetStateAction<T>>, Stream<T>]
+function useSyncState<T>(initialValue: T): [T, Dispatch<SetStateAction<T>>, Stream<T>]
 ```
 
 **Example:**
@@ -262,10 +262,7 @@ value$.next(20)
 Create persistent stream with localStorage.
 
 ```tsx
-function persistStream$<T>(
-  initialValue: T,
-  options: PersistOptions<T>
-): Stream<T>
+function persistStream$<T>(initialValue: T, options: PersistOptions<T>): Stream<T>
 
 interface PersistOptions<T> {
   key: string
@@ -279,7 +276,7 @@ interface PersistOptions<T> {
 
 ```tsx
 const theme$ = persistStream$('dark', {
-  key: 'app-theme'
+  key: 'app-theme',
 })
 ```
 
@@ -288,10 +285,7 @@ const theme$ = persistStream$('dark', {
 HTTP request hook with automatic state management.
 
 ```tsx
-function useFetch<T>(
-  url: string,
-  options?: UseFetchOptions
-): UseFetchReturn<T>
+function useFetch<T>(url: string, options?: UseFetchOptions): UseFetchReturn<T>
 
 interface UseFetchOptions extends RequestInit {
   immediate?: boolean
@@ -318,7 +312,7 @@ interface UseFetchReturn<T> {
 const { data, loading, error, refetch } = useFetch('/api/users', {
   immediate: true,
   retry: 3,
-  timeout: 5000
+  timeout: 5000,
 })
 ```
 
@@ -347,8 +341,8 @@ interface CreateFetchOptions {
 const useAPI = createFetch({
   baseURL: 'https://api.example.com',
   headers: {
-    'Authorization': 'Bearer token'
-  }
+    Authorization: 'Bearer token',
+  },
 })
 
 function App() {
@@ -361,20 +355,20 @@ function App() {
 
 ### vs RxJS
 
-| Feature | Pipel-React | RxJS |
-|---------|-------------|------|
-| Learning Curve | ⭐⭐ Low | ⭐⭐⭐⭐⭐ High |
-| Promise Compatible | ✅ Yes | ❌ No |
-| React Integration | ✅ Built-in | ⚠️ Manual |
-| Bundle Size | 📦 Small | 📦 Large |
+| Feature            | Pipel-React | RxJS            |
+| ------------------ | ----------- | --------------- |
+| Learning Curve     | ⭐⭐ Low    | ⭐⭐⭐⭐⭐ High |
+| Promise Compatible | ✅ Yes      | ❌ No           |
+| React Integration  | ✅ Built-in | ⚠️ Manual       |
+| Bundle Size        | 📦 Small    | 📦 Large        |
 
 ### vs VueUse
 
-| Feature | Pipel-React | VueUse |
-|---------|-------------|--------|
-| Framework | React | Vue |
-| Stream Programming | ✅ Yes | ❌ No |
-| Composability | ✅ High | ✅ High |
+| Feature            | Pipel-React | VueUse  |
+| ------------------ | ----------- | ------- |
+| Framework          | React       | Vue     |
+| Stream Programming | ✅ Yes      | ❌ No   |
+| Composability      | ✅ High     | ✅ High |
 
 ## 🤝 Contributing
 
@@ -387,6 +381,7 @@ MIT © PipelJS Team
 ## 🔗 Links
 
 - [PipelJS Core](https://github.com/pipeljs/pipel)
-- [Documentation](https://pipeljs.dev)
+- [Online Documentation](https://pipeljs.github.io/pipel-react/)
+- [API Reference](./docs/API_REFERENCE.md)
 - [Examples](./examples)
 - [Changelog](./CHANGELOG.md)

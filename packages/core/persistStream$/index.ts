@@ -1,25 +1,22 @@
-import { useEffect } from 'react'
 import { Stream } from 'pipeljs'
-import { useStream } from './useStream'
 
-export interface PersistOptions<T> {
-  key: string
-  storage?: Storage
-  serializer?: (value: T) => string
-  deserializer?: (value: string) => T
+export interface PersistSerializer<T> {
+  serialize: (value: T) => string
+  deserialize: (value: string) => T
 }
 
 /**
  * 创建持久化的 Stream，自动同步到 localStorage
- * 
+ * 注意：这是一个工厂函数，不是 React Hook
+ *
  * @example
  * ```tsx
+ * // 在组件外部创建
+ * const theme$ = persistStream$('app-theme', 'dark')
+ *
  * function Settings() {
- *   const theme$ = persistStream$('dark', {
- *     key: 'app-theme'
- *   })
  *   const [theme] = usePipel(theme$)
- *   
+ *
  *   return (
  *     <button onClick={() => theme$.next(theme === 'dark' ? 'light' : 'dark')}>
  *       Toggle Theme: {theme}
@@ -29,43 +26,39 @@ export interface PersistOptions<T> {
  * ```
  */
 export function persistStream$<T>(
+  key: string,
   initialValue: T,
-  options: PersistOptions<T>
+  serializer?: PersistSerializer<T>
 ): Stream<T> {
-  const {
-    key,
-    storage = localStorage,
-    serializer = JSON.stringify,
-    deserializer = JSON.parse
-  } = options
-  
+  const storage = typeof window !== 'undefined' ? localStorage : null
+  const serialize = serializer?.serialize || JSON.stringify
+  const deserialize = serializer?.deserialize || JSON.parse
+
   // 从 storage 读取初始值
   const getStoredValue = (): T => {
+    if (!storage) return initialValue
+
     try {
       const item = storage.getItem(key)
-      return item ? deserializer(item) : initialValue
+      return item ? deserialize(item) : initialValue
     } catch (error) {
       console.error(`Error reading from storage (key: ${key}):`, error)
       return initialValue
     }
   }
-  
-  const stream$ = useStream(getStoredValue())
-  
+
+  const stream$ = new Stream<T>(getStoredValue())
+
   // 监听 stream 变化并持久化
-  useEffect(() => {
-    const child = stream$.then((value: T) => {
-      try {
-        storage.setItem(key, serializer(value))
-      } catch (error) {
-        console.error(`Error writing to storage (key: ${key}):`, error)
-      }
-    })
-    
-    return () => {
-      child.unsubscribe()
+  stream$.subscribe((value: T) => {
+    if (!storage) return
+
+    try {
+      storage.setItem(key, serialize(value))
+    } catch (error) {
+      console.error(`Error writing to storage (key: ${key}):`, error)
     }
-  }, [stream$, key, storage, serializer])
-  
+  })
+
   return stream$
 }

@@ -23,15 +23,15 @@ export interface DebugOptions {
 
 /**
  * Create a debug plugin for streams
- * 
+ *
  * @param options - Debug options
  * @returns Debug plugin
- * 
+ *
  * @example
  * ```tsx
  * const stream$ = new Stream(0)
  * stream$.use(createDebugPlugin({ label: 'Counter' }))
- * 
+ *
  * stream$.next(1) // Logs: [Counter] Value: 1
  * stream$.next(2) // Logs: [Counter] Value: 2
  * ```
@@ -42,11 +42,11 @@ export function createDebugPlugin(options: DebugOptions = {}) {
     logValues = true,
     logSubscriptions = true,
     logErrors = true,
-    logger = console.log
+    logger = console.log,
   } = options
 
   return {
-    thenAll: (unsubscribe: () => void, observable: Observable<any>) => {
+    thenAll: (unsubscribe: () => void, _observable: Observable<any>) => {
       if (logSubscriptions) {
         logger(`[${label}] Subscribed`)
       }
@@ -68,22 +68,22 @@ export function createDebugPlugin(options: DebugOptions = {}) {
       if (logErrors) {
         logger(`[${label}] Error:`, error)
       }
-    }
+    },
   }
 }
 
 /**
  * Add debug logging to a stream
- * 
+ *
  * @param stream$ - Stream to debug
  * @param label - Label for the stream
  * @returns The same stream (for chaining)
- * 
+ *
  * @example
  * ```tsx
  * const count$ = new Stream(0)
  * debug$(count$, 'Counter')
- * 
+ *
  * count$.next(1) // Logs: [Counter] Value: 1
  * ```
  */
@@ -98,28 +98,25 @@ export function debug$<T>(
 
 /**
  * Log stream values to console
- * 
+ *
  * @param stream$ - Stream to log
  * @param label - Optional label
  * @returns Unsubscribe function
- * 
+ *
  * @example
  * ```tsx
  * const count$ = new Stream(0)
  * const unsubscribe = logStream$(count$, 'Counter')
- * 
+ *
  * count$.next(1) // Logs: [Counter] 1
  * count$.next(2) // Logs: [Counter] 2
- * 
+ *
  * unsubscribe() // Stop logging
  * ```
  */
-export function logStream$<T>(
-  stream$: Stream<T> | Observable<T>,
-  label?: string
-): () => void {
+export function logStream$<T>(stream$: Stream<T> | Observable<T>, label?: string): () => void {
   const prefix = label ? `[${label}]` : '[Stream]'
-  
+
   const subscription = stream$.then((value: T) => {
     console.log(prefix, value)
   })
@@ -129,16 +126,16 @@ export function logStream$<T>(
 
 /**
  * Trace stream lifecycle events
- * 
+ *
  * @param stream$ - Stream to trace
  * @param label - Optional label
  * @returns The same stream (for chaining)
- * 
+ *
  * @example
  * ```tsx
  * const count$ = new Stream(0)
  * trace$(count$, 'Counter')
- * 
+ *
  * // Logs lifecycle events:
  * // [Counter] Created
  * // [Counter] Subscribed
@@ -147,12 +144,9 @@ export function logStream$<T>(
  * // [Counter] Completed
  * ```
  */
-export function trace$<T>(
-  stream$: Stream<T>,
-  label?: string
-): Stream<T> {
+export function trace$<T>(stream$: Stream<T>, label?: string): Stream<T> {
   const prefix = label ? `[${label}]` : '[Stream]'
-  
+
   console.log(`${prefix} Created`)
 
   stream$.use({
@@ -163,7 +157,7 @@ export function trace$<T>(
         console.log(`${prefix} Unsubscribed`)
         originalUnsubscribe()
       }
-    }
+    },
   })
 
   stream$.afterSetValue((value: any) => {
@@ -179,18 +173,18 @@ export function trace$<T>(
 
 /**
  * Create a stream inspector for debugging
- * 
+ *
  * @param stream$ - Stream to inspect
  * @returns Inspector object
- * 
+ *
  * @example
  * ```tsx
  * const count$ = new Stream(0)
  * const inspector = inspect$(count$)
- * 
+ *
  * count$.next(1)
  * count$.next(2)
- * 
+ *
  * console.log(inspector.getHistory()) // [0, 1, 2]
  * console.log(inspector.getSubscriberCount()) // 1
  * ```
@@ -207,7 +201,7 @@ export function inspect$<T>(stream$: Stream<T>) {
         subscriberCount--
         originalUnsubscribe()
       }
-    }
+    },
   })
 
   stream$.afterSetValue((value: T) => {
@@ -221,25 +215,25 @@ export function inspect$<T>(stream$: Stream<T>) {
     clear: () => {
       history.length = 0
       history.push(stream$.value)
-    }
+    },
   }
 }
 
 /**
  * Performance monitoring for streams
- * 
+ *
  * @param stream$ - Stream to monitor
  * @param label - Optional label
  * @returns Performance stats
- * 
+ *
  * @example
  * ```tsx
  * const count$ = new Stream(0)
  * const perf = performanceMonitor$(count$, 'Counter')
- * 
+ *
  * count$.next(1)
  * count$.next(2)
- * 
+ *
  * console.log(perf.getStats())
  * // {
  * //   updateCount: 2,
@@ -248,10 +242,7 @@ export function inspect$<T>(stream$: Stream<T>) {
  * // }
  * ```
  */
-export function performanceMonitor$<T>(
-  stream$: Stream<T>,
-  label?: string
-) {
+export function performanceMonitor$<T>(stream$: Stream<T>, label?: string) {
   const prefix = label ? `[${label}]` : '[Stream]'
   let updateCount = 0
   let totalTime = 0
@@ -260,7 +251,7 @@ export function performanceMonitor$<T>(
   stream$.afterSetValue(() => {
     const start = performance.now()
     updateCount++
-    
+
     // Measure time in next tick
     setTimeout(() => {
       const duration = performance.now() - start
@@ -274,13 +265,13 @@ export function performanceMonitor$<T>(
       updateCount,
       averageUpdateTime: updateCount > 0 ? totalTime / updateCount : 0,
       totalTime,
-      updateTimes: [...updateTimes]
+      updateTimes: [...updateTimes],
     }),
     log: () => {
       const stats = {
         updateCount,
         averageUpdateTime: updateCount > 0 ? totalTime / updateCount : 0,
-        totalTime
+        totalTime,
       }
       console.log(`${prefix} Performance:`, stats)
     },
@@ -288,6 +279,6 @@ export function performanceMonitor$<T>(
       updateCount = 0
       totalTime = 0
       updateTimes.length = 0
-    }
+    },
   }
 }

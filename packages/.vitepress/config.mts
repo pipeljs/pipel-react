@@ -2,15 +2,19 @@ import { defineConfig } from 'vitepress'
 import { enConfig } from './config.en.mts'
 import { cnConfig } from './config.cn.mts'
 
+// 开发模式使用根路径，生产模式使用 /pipel-react/
+const base = process.env.NODE_ENV === 'production' ? '/pipel-react/' : '/'
+
 export default defineConfig({
   title: 'Pipel-React',
   description: 'Promise-like reactive stream programming for React',
-  base: '/pipel-react/',
+  base,
   lastUpdated: true,
   cleanUrls: true,
+  ignoreDeadLinks: true,
   
   head: [
-    ['link', { rel: 'icon', href: '/pipel-react/favico.ico' }],
+    ['link', { rel: 'icon', href: `${base}favico.ico` }],
     ['meta', { name: 'theme-color', content: '#3eaf7c' }],
     ['meta', { name: 'apple-mobile-web-app-capable', content: 'yes' }],
     ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' }]
@@ -54,7 +58,29 @@ export default defineConfig({
           text: 'Core Hooks',
           items: [
             { text: 'usePipel', link: '/core/usePipel/' },
+            { text: 'useStream', link: '/core/useStream/' },
+            { text: 'useObservable', link: '/core/useObservable/' },
+            { text: 'useSyncState', link: '/core/useSyncState/' },
+            { text: 'usePipelRender', link: '/core/usePipelRender/' },
             { text: 'useFetch', link: '/core/useFetch/' }
+          ]
+        },
+        {
+          text: 'Stream Utilities',
+          items: [
+            { text: 'to$', link: '/core/to$/' },
+            { text: 'effect$', link: '/core/effect$/' },
+            { text: 'asyncStream$', link: '/core/asyncStream$/' },
+            { text: 'persistStream$', link: '/core/persistStream$/' },
+            { text: 'batch$', link: '/core/batch$/' },
+            { text: 'fromEvent', link: '/core/fromEvent/' },
+            { text: 'computedStream$', link: '/core/computedStream$/' }
+          ]
+        },
+        {
+          text: 'Debugging',
+          items: [
+            { text: 'debug', link: '/core/debug/' }
           ]
         }
       ]
