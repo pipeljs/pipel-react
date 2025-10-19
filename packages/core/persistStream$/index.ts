@@ -50,7 +50,7 @@ export function persistStream$<T>(
   const stream$ = new Stream<T>(getStoredValue())
 
   // 监听 stream 变化并持久化
-  stream$.subscribe((value: T) => {
+  stream$.then((value: T) => {
     if (!storage) return
 
     try {

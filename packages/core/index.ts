@@ -12,7 +12,7 @@ export { effect$ } from './effect$'
 export { useSyncState } from './useSyncState'
 export { usePipelRender } from './usePipelRender'
 export { persistStream$ } from './persistStream$'
-export type { PersistOptions } from './persistStream$'
+export type { PersistSerializer } from './persistStream$'
 
 // Advanced Hooks
 export { computedStream$, useComputedStream$ } from './computedStream$'
