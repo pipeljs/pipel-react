@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/pipeljs/pipel-react/compare/v0.1.3...v0.1.4) (2025-10-19)
+
+### Features
+
+- 补充pipel-react的图标 ([2773e42](https://github.com/pipeljs/pipel-react/commit/2773e42e138282678dbe6aac04b9b6e4f8ee4e25))
+
 ### [0.1.3](https://github.com/pipeljs/pipel-react/compare/v0.1.2...v0.1.3) (2025-10-19)
 
 ### Bug Fixes
